@@ -833,7 +833,7 @@ void CalculatePurity(const Bool_t isInBatchMode=false) {
     // close input file
     fInput -> cd();
     fInput -> Close();
-    cout << "      Closed file " << iFile << "." << endl;
+    cout << "      Closed file " << iFile + 1<< "." << endl;
 
   }  // end file loop
 
