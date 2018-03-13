@@ -1,6 +1,6 @@
 // 'CalculateEmbeddingEfficiency.C'
 // Derek Anderson
-// 02.014.2018
+// 03.08.2018
 //
 // Use this to calculate the tracking
 // efficiency using output from the
@@ -12,16 +12,14 @@
 //       of tracks before QA cuts
 //       to the no. of tracks after
 //       QA cuts.
-//
-// NOTE: should NOT be called on
-//       its own.  Use 'Calculate
-//       Efficiency.C'...
 
 
+#include <map>
 #include <vector>
 #include <cassert>
 #include <iostream>
 #include "TH1.h"
+#include "TH2.h"
 #include "TF1.h"
 #include "TPad.h"
 #include "TFile.h"
@@ -43,16 +41,18 @@ static const UInt_t  NTwrMax(5000);
 static const UInt_t  NMatchMax(10);
 static const UInt_t  NHotTwr(41);
 static const UInt_t  NBadRuns(45);
+static const UInt_t  NLevel(2);
 static const UInt_t  NTrgs(2);
 static const UInt_t  NCut(2);
 static const UInt_t  NVal(2);
-static const TString sTreeDefault("GfmtoDst_gnt");
-static const TString sInputDefault("../../MuDstMatching/output/merged/pt5.match.root");
-static const TString sOutputDefault("pp200r9pt5g.default.root");
+static const TString sTreePar("McTracks");
+static const TString sTreeDet("GfmtoDst_mu");
+static const TString sInputDefault("../../MuDstMatching/output/merged/pt9.matchWithMc.root");
+static const TString sOutputDefault("pp200r9pt9.effWithDca1andIdVx0.d12m3y2018.root");
 
 
 
-vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, const Bool_t isInBatchMode=false, const Bool_t isDetectorLevel=false, const Bool_t isTriggered=false, const TString sInput=sInputDefault, const TString sTree=sTreeDefault, const TString sOutput=sOutputDefault, const vector<UInt_t> badTreeIndices=vector<UInt_t>()) {
+void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t isInBatchMode=false, const Bool_t isTriggered=false, const TString sInput=sInputDefault, const TString sOutput=sOutputDefault) {
 
   // event parameters
   const Double_t rVtxMax(2.);
@@ -88,19 +88,50 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   cout << "    Opened files." << endl;
 
   // grab input tree
-  TTree *tInput;
-  fInput -> GetObject(sTree.Data(), tInput);
-  if (!tInput) {
-    cerr << "PANIC: couldn't grab input tree!" << endl;
+  TTree *tPar;
+  TTree *tDet;
+  fInput -> GetObject(sTreePar.Data(), tPar);
+  fInput -> GetObject(sTreeDet.Data(), tDet);
+  if (!tPar) {
+    cerr << "PANIC: couldn't grab particle level tree!" << endl;
     assert(0);
   }
-  if (isDetectorLevel)
-    cout << "    Grabbed detector tree." << endl;
-  else
-    cout << "    Grabbed particle tree." << endl;
+  if (!tDet) {
+    cerr << "PANIC: couldn't grab detector level tree!" << endl;
+    assert(0);
+  }
+  cout << "    Grabbed trees." << endl;
 
 
-  // declarare leaf types
+  // declare particle (event) leaf types
+  Int_t    mcEventId;
+  Int_t    mcRunId;
+  Int_t    mcNumTrks;
+  Double_t muVx;
+  Double_t muVy;
+  Double_t muVz;
+  Double_t mcVx;
+  Double_t mcVy;
+  Double_t mcVz;
+  // declare particle (track) leaf types
+  vector<Int_t>    *mcIdTrk;
+  vector<Int_t>    *mcIdGeant;
+  vector<Int_t>    *mcIdVx;
+  vector<Int_t>    *mcIdVxEnd;
+  vector<Int_t>    *mcIntrVtx;
+  vector<Bool_t>   *mcIsShower;
+  vector<Double_t> *mcCharge;
+  vector<Double_t> *mcRapidity;
+  vector<Double_t> *mcEta;
+  vector<Double_t> *mcPhi;
+  vector<Double_t> *mcPx;
+  vector<Double_t> *mcPy;
+  vector<Double_t> *mcPz;
+  vector<Double_t> *mcPt;
+  vector<Double_t> *mcPtot;
+  vector<Double_t> *mcEnergy;
+
+  // declare detector leaf types
   UInt_t   fUniqueID;
   UInt_t   fBits;
   Long64_t runNumber;
@@ -247,152 +278,179 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   Int_t    TowerArray_fMatchedTracksArray_nPos[NTwrMax][NMatchMax];
 
 
-  // set branch addresses
-  tInput -> SetMakeClass(1);
-  tInput -> SetBranchAddress("fUniqueID", &fUniqueID);
-  tInput -> SetBranchAddress("fBits", &fBits);
-  tInput -> SetBranchAddress("runNumber", &runNumber);
-  tInput -> SetBranchAddress("eventNumber", &eventNumber);
-  tInput -> SetBranchAddress("trigID", &trigID);
-  tInput -> SetBranchAddress("nGlobalTracks", &nGlobalTracks);
-  tInput -> SetBranchAddress("nPrimaryTracks", &nPrimaryTracks);
-  tInput -> SetBranchAddress("refMult", &refMult);
-  tInput -> SetBranchAddress("vpdVz", &vpdVz);
-  tInput -> SetBranchAddress("xVertex", &xVertex);
-  tInput -> SetBranchAddress("yVertex", &yVertex);
-  tInput -> SetBranchAddress("zVertex", &zVertex);
-  tInput -> SetBranchAddress("bbcZVertex", &bbcZVertex);
-  tInput -> SetBranchAddress("zdcCoincidenceRate", &zdcCoincidenceRate);
-  tInput -> SetBranchAddress("bbcCoincidenceRate", &bbcCoincidenceRate);
-  tInput -> SetBranchAddress("backgroundRate", &backgroundRate);
-  tInput -> SetBranchAddress("bbcBlueBackgroundRate", &bbcBlueBackgroundRate);
-  tInput -> SetBranchAddress("bbcYellowBackgroundRate", &bbcYellowBackgroundRate);
-  tInput -> SetBranchAddress("refMultPos", &refMultPos);
-  tInput -> SetBranchAddress("refMultNeg", &refMultNeg);
-  tInput -> SetBranchAddress("bTOFTrayMultiplicity", &bTOFTrayMultiplicity);
-  tInput -> SetBranchAddress("nVerticies", &nVerticies);
-  tInput -> SetBranchAddress("MagF", &MagF);
-  tInput -> SetBranchAddress("VrtxRank", &VrtxRank);
-  tInput -> SetBranchAddress("Etsp", &Etsp);
-  tInput -> SetBranchAddress("ETwrdidT", &ETwrdidT);
-  tInput -> SetBranchAddress("ETwradc11", &ETwradc11);
-  tInput -> SetBranchAddress("ETwreneT0", &ETwreneT0);
-  tInput -> SetBranchAddress("ETwreT", &ETwreT);
-  tInput -> SetBranchAddress("ETwrENET0", &ETwrENET0);
-  tInput -> SetBranchAddress("ETwrphT", &ETwrphT);
-  tInput -> SetBranchAddress("ETwrPTower", &ETwrPTower);
-  tInput -> SetBranchAddress("ETwrpidTower", &ETwrpidTower);
-  tInput -> SetBranchAddress("ETwrmoduleT", &ETwrmoduleT);
-  tInput -> SetBranchAddress("EClustEneT0", &EClustEneT0);
-  tInput -> SetBranchAddress("EClustetav1", &EClustetav1);
-  tInput -> SetBranchAddress("EClustphiv1", &EClustphiv1);
-  tInput -> SetBranchAddress("EEstrpen01", &EEstrpen01);
-  tInput -> SetBranchAddress("EEstrpen02", &EEstrpen02);
-  tInput -> SetBranchAddress("EEstrpen03", &EEstrpen03);
-  tInput -> SetBranchAddress("EEstrpen0", &EEstrpen0);
-  tInput -> SetBranchAddress("EEstrpen1", &EEstrpen1);
-  tInput -> SetBranchAddress("EEstrpen2", &EEstrpen2);
-  tInput -> SetBranchAddress("EEstrpen3", &EEstrpen3);
-  tInput -> SetBranchAddress("EEstrpen4", &EEstrpen4);
-  tInput -> SetBranchAddress("EEstrpen5", &EEstrpen5);
-  tInput -> SetBranchAddress("EEstrpen6", &EEstrpen6);
-  tInput -> SetBranchAddress("EEstrpen7", &EEstrpen7);
-  tInput -> SetBranchAddress("EEstrpen8", &EEstrpen8);
-  tInput -> SetBranchAddress("EEstrpen9", &EEstrpen9);
-  tInput -> SetBranchAddress("EEstrpen10", &EEstrpen10);
-  tInput -> SetBranchAddress("EEstrpen11", &EEstrpen11);
-  tInput -> SetBranchAddress("EEstrpen12", &EEstrpen12);
-  tInput -> SetBranchAddress("EEstrpen13", &EEstrpen13);
-  tInput -> SetBranchAddress("EEstrpen14", &EEstrpen14);
-  tInput -> SetBranchAddress("EEstrpen15", &EEstrpen15);
-  tInput -> SetBranchAddress("ETwrdidE", &ETwrdidE);
-  tInput -> SetBranchAddress("EPstripenp01", &EPstripenp01);
-  tInput -> SetBranchAddress("EPstripenp02", &EPstripenp02);
-  tInput -> SetBranchAddress("EPstripenp03", &EPstripenp03);
-  tInput -> SetBranchAddress("EPstripenp0", &EPstripenp0);
-  tInput -> SetBranchAddress("EPstripenp1", &EPstripenp1);
-  tInput -> SetBranchAddress("EPstripenp2", &EPstripenp2);
-  tInput -> SetBranchAddress("EPstripenp3", &EPstripenp3);
-  tInput -> SetBranchAddress("EPstripenp4", &EPstripenp4);
-  tInput -> SetBranchAddress("EPstripenp5", &EPstripenp5);
-  tInput -> SetBranchAddress("EPstripenp6", &EPstripenp6);
-  tInput -> SetBranchAddress("EPstripenp7", &EPstripenp7);
-  tInput -> SetBranchAddress("EPstripenp8", &EPstripenp8);
-  tInput -> SetBranchAddress("EPstripenp9", &EPstripenp9);
-  tInput -> SetBranchAddress("EPstripenp10", &EPstripenp10);
-  tInput -> SetBranchAddress("EPstripenp11", &EPstripenp11);
-  tInput -> SetBranchAddress("EPstripenp12", &EPstripenp12);
-  tInput -> SetBranchAddress("EPstripenp13", &EPstripenp13);
-  tInput -> SetBranchAddress("EPstripenp14", &EPstripenp14);
-  tInput -> SetBranchAddress("EPstripenp15", &EPstripenp15);
-  tInput -> SetBranchAddress("EclustEnnq1", &EclustEnnq1);
-  tInput -> SetBranchAddress("EclustEnnq20", &EclustEnnq20);
-  tInput -> SetBranchAddress("EclustEnnq19", &EclustEnnq19);
-  tInput -> SetBranchAddress("EclustEnpq1", &EclustEnpq1);
-  tInput -> SetBranchAddress("EclustEnpq20", &EclustEnpq20);
-  tInput -> SetBranchAddress("EclustEnpq19", &EclustEnpq19);
-  tInput -> SetBranchAddress("EclustEnpq21", &EclustEnpq21);
-  tInput -> SetBranchAddress("PrimaryTrackArray", &PrimaryTrackArray_);
-  tInput -> SetBranchAddress("PrimaryTrackArray.fUniqueID", PrimaryTrackArray_fUniqueID);
-  tInput -> SetBranchAddress("PrimaryTrackArray.fBits", PrimaryTrackArray_fBits);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nHitsFit", PrimaryTrackArray_nHitsFit);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nHitsPoss", PrimaryTrackArray_nHitsPoss);
-  tInput -> SetBranchAddress("PrimaryTrackArray.trackFlag", PrimaryTrackArray_trackFlag);
-  tInput -> SetBranchAddress("PrimaryTrackArray.pdgId", PrimaryTrackArray_pdgId);
-  tInput -> SetBranchAddress("PrimaryTrackArray.geantId", PrimaryTrackArray_geantId);
-  tInput -> SetBranchAddress("PrimaryTrackArray.pZ", PrimaryTrackArray_pZ);
-  tInput -> SetBranchAddress("PrimaryTrackArray.pX", PrimaryTrackArray_pX);
-  tInput -> SetBranchAddress("PrimaryTrackArray.pY", PrimaryTrackArray_pY);
-  tInput -> SetBranchAddress("PrimaryTrackArray.pT", PrimaryTrackArray_pT);
-  tInput -> SetBranchAddress("PrimaryTrackArray.dEdx", PrimaryTrackArray_dEdx);
-  tInput -> SetBranchAddress("PrimaryTrackArray.charge", PrimaryTrackArray_charge);
-  tInput -> SetBranchAddress("PrimaryTrackArray.tofBeta", PrimaryTrackArray_tofBeta);
-  tInput -> SetBranchAddress("PrimaryTrackArray.eta", PrimaryTrackArray_eta);
-  tInput -> SetBranchAddress("PrimaryTrackArray.phi", PrimaryTrackArray_phi);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nSigElectron", PrimaryTrackArray_nSigElectron);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nSigPion", PrimaryTrackArray_nSigPion);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nSigKaon", PrimaryTrackArray_nSigKaon);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nSigProton", PrimaryTrackArray_nSigProton);
-  tInput -> SetBranchAddress("PrimaryTrackArray.dcag", PrimaryTrackArray_dcag);
-  tInput -> SetBranchAddress("PrimaryTrackArray.nHits", PrimaryTrackArray_nHits);
-  tInput -> SetBranchAddress("PrimaryTrackArray.dEdxHits", PrimaryTrackArray_dEdxHits);
-  tInput -> SetBranchAddress("PrimaryTrackArray.firstZPoint", PrimaryTrackArray_firstZPoint);
-  tInput -> SetBranchAddress("PrimaryTrackArray.lastZPoint", PrimaryTrackArray_lastZPoint);
-  tInput -> SetBranchAddress("PrimaryTrackArray.tofSigElectron", PrimaryTrackArray_tofSigElectron);
-  tInput -> SetBranchAddress("PrimaryTrackArray.tofSigPion", PrimaryTrackArray_tofSigPion);
-  tInput -> SetBranchAddress("PrimaryTrackArray.tofSigKaon", PrimaryTrackArray_tofSigKaon);
-  tInput -> SetBranchAddress("PrimaryTrackArray.tofSigProton", PrimaryTrackArray_tofSigProton);
-  tInput -> SetBranchAddress("PrimaryTrackArray.timeOfflight", PrimaryTrackArray_timeOfflight);
-  tInput -> SetBranchAddress("PrimaryTrackArray.pathLength", PrimaryTrackArray_pathLength);
-  tInput -> SetBranchAddress("PrimaryTrackArray.trkIndex", PrimaryTrackArray_trkIndex);
-  tInput -> SetBranchAddress("TowerArray", &TowerArray_);
-  tInput -> SetBranchAddress("TowerArray.fUniqueID", TowerArray_fUniqueID);
-  tInput -> SetBranchAddress("TowerArray.fBits", TowerArray_fBits);
-  tInput -> SetBranchAddress("TowerArray.TwrId", TowerArray_TwrId);
-  tInput -> SetBranchAddress("TowerArray.TwrEng", TowerArray_TwrEng);
-  tInput -> SetBranchAddress("TowerArray.TwrEta", TowerArray_TwrEta);
-  tInput -> SetBranchAddress("TowerArray.TwrPhi", TowerArray_TwrPhi);
-  tInput -> SetBranchAddress("TowerArray.TwrADC", TowerArray_TwrADC);
-  tInput -> SetBranchAddress("TowerArray.TwrPed", TowerArray_TwrPed);
-  tInput -> SetBranchAddress("TowerArray.TwrRMS", TowerArray_TwrRMS);
-  tInput -> SetBranchAddress("TowerArray.TwrMatchIdnex", TowerArray_TwrMatchIdnex);
-  tInput -> SetBranchAddress("TowerArray.NoOfmatchedTrk", TowerArray_NoOfmatchedTrk);
-  tInput -> SetBranchAddress("TowerArray.TwrMatchP", TowerArray_TwrMatchP);
-  tInput -> SetBranchAddress("TowerArray.TwrPx", TowerArray_TwrPx);
-  tInput -> SetBranchAddress("TowerArray.TwrPy", TowerArray_TwrPy);
-  tInput -> SetBranchAddress("TowerArray.TwrPz", TowerArray_TwrPz);
-  tInput -> SetBranchAddress("TowerArray.fNAssocTracks", TowerArray_fNAssocTracks);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_[10]", TowerArray_fMatchedTracksArray_);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_P[10]", TowerArray_fMatchedTracksArray_P);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigPi[10]", TowerArray_fMatchedTracksArray_nSigPi);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigK[10]", TowerArray_fMatchedTracksArray_nSigK);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigP[10]", TowerArray_fMatchedTracksArray_nSigP);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigE[10]", TowerArray_fMatchedTracksArray_nSigE);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_dcag[10]", TowerArray_fMatchedTracksArray_dcag);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_eta[10]", TowerArray_fMatchedTracksArray_eta);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_pT[10]", TowerArray_fMatchedTracksArray_pT);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_nFit[10]", TowerArray_fMatchedTracksArray_nFit);
-  tInput -> SetBranchAddress("TowerArray.fMatchedTracksArray_nPos[10]", TowerArray_fMatchedTracksArray_nPos);
+  // set particle branch addresses
+  tPar -> SetBranchAddress("EventId", &mcEventId);
+  tPar -> SetBranchAddress("RunId", &mcRunId);
+  tPar -> SetBranchAddress("NumTrks", &mcNumTrks);
+  tPar -> SetBranchAddress("MuVtxX", &muVx);
+  tPar -> SetBranchAddress("MuVtxY", &muVy);
+  tPar -> SetBranchAddress("MuVtxZ", &muVz);
+  tPar -> SetBranchAddress("McVtxX", &mcVx);
+  tPar -> SetBranchAddress("McVtxY", &mcVy);
+  tPar -> SetBranchAddress("McVtxZ", &mcVz);
+  tPar -> SetBranchAddress("IdTrk", &mcIdTrk);
+  tPar -> SetBranchAddress("IdGeant", &mcIdGeant);
+  tPar -> SetBranchAddress("IdVx", &mcIdVx);
+  tPar -> SetBranchAddress("IdVxEnd", &mcIdVxEnd);
+  tPar -> SetBranchAddress("IntrVtx", &mcIntrVtx);
+  tPar -> SetBranchAddress("IsShower", &mcIsShower);
+  tPar -> SetBranchAddress("Charge", &mcCharge);
+  tPar -> SetBranchAddress("Rapidity", &mcRapidity);
+  tPar -> SetBranchAddress("Eta", &mcEta);
+  tPar -> SetBranchAddress("Phi", &mcPhi);
+  tPar -> SetBranchAddress("Px", &mcPx);
+  tPar -> SetBranchAddress("Py", &mcPy);
+  tPar -> SetBranchAddress("Pz", &mcPz);
+  tPar -> SetBranchAddress("Pt", &mcPt);
+  tPar -> SetBranchAddress("Ptot", &mcPtot);
+  tPar -> SetBranchAddress("Energy", &mcEnergy);
+
+  // set detector branch addresses
+  tDet -> SetMakeClass(1);
+  tDet -> SetBranchAddress("fUniqueID", &fUniqueID);
+  tDet -> SetBranchAddress("fBits", &fBits);
+  tDet -> SetBranchAddress("runNumber", &runNumber);
+  tDet -> SetBranchAddress("eventNumber", &eventNumber);
+  tDet -> SetBranchAddress("trigID", &trigID);
+  tDet -> SetBranchAddress("nGlobalTracks", &nGlobalTracks);
+  tDet -> SetBranchAddress("nPrimaryTracks", &nPrimaryTracks);
+  tDet -> SetBranchAddress("refMult", &refMult);
+  tDet -> SetBranchAddress("vpdVz", &vpdVz);
+  tDet -> SetBranchAddress("xVertex", &xVertex);
+  tDet -> SetBranchAddress("yVertex", &yVertex);
+  tDet -> SetBranchAddress("zVertex", &zVertex);
+  tDet -> SetBranchAddress("bbcZVertex", &bbcZVertex);
+  tDet -> SetBranchAddress("zdcCoincidenceRate", &zdcCoincidenceRate);
+  tDet -> SetBranchAddress("bbcCoincidenceRate", &bbcCoincidenceRate);
+  tDet -> SetBranchAddress("backgroundRate", &backgroundRate);
+  tDet -> SetBranchAddress("bbcBlueBackgroundRate", &bbcBlueBackgroundRate);
+  tDet -> SetBranchAddress("bbcYellowBackgroundRate", &bbcYellowBackgroundRate);
+  tDet -> SetBranchAddress("refMultPos", &refMultPos);
+  tDet -> SetBranchAddress("refMultNeg", &refMultNeg);
+  tDet -> SetBranchAddress("bTOFTrayMultiplicity", &bTOFTrayMultiplicity);
+  tDet -> SetBranchAddress("nVerticies", &nVerticies);
+  tDet -> SetBranchAddress("MagF", &MagF);
+  tDet -> SetBranchAddress("VrtxRank", &VrtxRank);
+  tDet -> SetBranchAddress("Etsp", &Etsp);
+  tDet -> SetBranchAddress("ETwrdidT", &ETwrdidT);
+  tDet -> SetBranchAddress("ETwradc11", &ETwradc11);
+  tDet -> SetBranchAddress("ETwreneT0", &ETwreneT0);
+  tDet -> SetBranchAddress("ETwreT", &ETwreT);
+  tDet -> SetBranchAddress("ETwrENET0", &ETwrENET0);
+  tDet -> SetBranchAddress("ETwrphT", &ETwrphT);
+  tDet -> SetBranchAddress("ETwrPTower", &ETwrPTower);
+  tDet -> SetBranchAddress("ETwrpidTower", &ETwrpidTower);
+  tDet -> SetBranchAddress("ETwrmoduleT", &ETwrmoduleT);
+  tDet -> SetBranchAddress("EClustEneT0", &EClustEneT0);
+  tDet -> SetBranchAddress("EClustetav1", &EClustetav1);
+  tDet -> SetBranchAddress("EClustphiv1", &EClustphiv1);
+  tDet -> SetBranchAddress("EEstrpen01", &EEstrpen01);
+  tDet -> SetBranchAddress("EEstrpen02", &EEstrpen02);
+  tDet -> SetBranchAddress("EEstrpen03", &EEstrpen03);
+  tDet -> SetBranchAddress("EEstrpen0", &EEstrpen0);
+  tDet -> SetBranchAddress("EEstrpen1", &EEstrpen1);
+  tDet -> SetBranchAddress("EEstrpen2", &EEstrpen2);
+  tDet -> SetBranchAddress("EEstrpen3", &EEstrpen3);
+  tDet -> SetBranchAddress("EEstrpen4", &EEstrpen4);
+  tDet -> SetBranchAddress("EEstrpen5", &EEstrpen5);
+  tDet -> SetBranchAddress("EEstrpen6", &EEstrpen6);
+  tDet -> SetBranchAddress("EEstrpen7", &EEstrpen7);
+  tDet -> SetBranchAddress("EEstrpen8", &EEstrpen8);
+  tDet -> SetBranchAddress("EEstrpen9", &EEstrpen9);
+  tDet -> SetBranchAddress("EEstrpen10", &EEstrpen10);
+  tDet -> SetBranchAddress("EEstrpen11", &EEstrpen11);
+  tDet -> SetBranchAddress("EEstrpen12", &EEstrpen12);
+  tDet -> SetBranchAddress("EEstrpen13", &EEstrpen13);
+  tDet -> SetBranchAddress("EEstrpen14", &EEstrpen14);
+  tDet -> SetBranchAddress("EEstrpen15", &EEstrpen15);
+  tDet -> SetBranchAddress("ETwrdidE", &ETwrdidE);
+  tDet -> SetBranchAddress("EPstripenp01", &EPstripenp01);
+  tDet -> SetBranchAddress("EPstripenp02", &EPstripenp02);
+  tDet -> SetBranchAddress("EPstripenp03", &EPstripenp03);
+  tDet -> SetBranchAddress("EPstripenp0", &EPstripenp0);
+  tDet -> SetBranchAddress("EPstripenp1", &EPstripenp1);
+  tDet -> SetBranchAddress("EPstripenp2", &EPstripenp2);
+  tDet -> SetBranchAddress("EPstripenp3", &EPstripenp3);
+  tDet -> SetBranchAddress("EPstripenp4", &EPstripenp4);
+  tDet -> SetBranchAddress("EPstripenp5", &EPstripenp5);
+  tDet -> SetBranchAddress("EPstripenp6", &EPstripenp6);
+  tDet -> SetBranchAddress("EPstripenp7", &EPstripenp7);
+  tDet -> SetBranchAddress("EPstripenp8", &EPstripenp8);
+  tDet -> SetBranchAddress("EPstripenp9", &EPstripenp9);
+  tDet -> SetBranchAddress("EPstripenp10", &EPstripenp10);
+  tDet -> SetBranchAddress("EPstripenp11", &EPstripenp11);
+  tDet -> SetBranchAddress("EPstripenp12", &EPstripenp12);
+  tDet -> SetBranchAddress("EPstripenp13", &EPstripenp13);
+  tDet -> SetBranchAddress("EPstripenp14", &EPstripenp14);
+  tDet -> SetBranchAddress("EPstripenp15", &EPstripenp15);
+  tDet -> SetBranchAddress("EclustEnnq1", &EclustEnnq1);
+  tDet -> SetBranchAddress("EclustEnnq20", &EclustEnnq20);
+  tDet -> SetBranchAddress("EclustEnnq19", &EclustEnnq19);
+  tDet -> SetBranchAddress("EclustEnpq1", &EclustEnpq1);
+  tDet -> SetBranchAddress("EclustEnpq20", &EclustEnpq20);
+  tDet -> SetBranchAddress("EclustEnpq19", &EclustEnpq19);
+  tDet -> SetBranchAddress("EclustEnpq21", &EclustEnpq21);
+  tDet -> SetBranchAddress("PrimaryTrackArray", &PrimaryTrackArray_);
+  tDet -> SetBranchAddress("PrimaryTrackArray.fUniqueID", PrimaryTrackArray_fUniqueID);
+  tDet -> SetBranchAddress("PrimaryTrackArray.fBits", PrimaryTrackArray_fBits);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nHitsFit", PrimaryTrackArray_nHitsFit);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nHitsPoss", PrimaryTrackArray_nHitsPoss);
+  tDet -> SetBranchAddress("PrimaryTrackArray.trackFlag", PrimaryTrackArray_trackFlag);
+  tDet -> SetBranchAddress("PrimaryTrackArray.pdgId", PrimaryTrackArray_pdgId);
+  tDet -> SetBranchAddress("PrimaryTrackArray.geantId", PrimaryTrackArray_geantId);
+  tDet -> SetBranchAddress("PrimaryTrackArray.pZ", PrimaryTrackArray_pZ);
+  tDet -> SetBranchAddress("PrimaryTrackArray.pX", PrimaryTrackArray_pX);
+  tDet -> SetBranchAddress("PrimaryTrackArray.pY", PrimaryTrackArray_pY);
+  tDet -> SetBranchAddress("PrimaryTrackArray.pT", PrimaryTrackArray_pT);
+  tDet -> SetBranchAddress("PrimaryTrackArray.dEdx", PrimaryTrackArray_dEdx);
+  tDet -> SetBranchAddress("PrimaryTrackArray.charge", PrimaryTrackArray_charge);
+  tDet -> SetBranchAddress("PrimaryTrackArray.tofBeta", PrimaryTrackArray_tofBeta);
+  tDet -> SetBranchAddress("PrimaryTrackArray.eta", PrimaryTrackArray_eta);
+  tDet -> SetBranchAddress("PrimaryTrackArray.phi", PrimaryTrackArray_phi);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nSigElectron", PrimaryTrackArray_nSigElectron);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nSigPion", PrimaryTrackArray_nSigPion);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nSigKaon", PrimaryTrackArray_nSigKaon);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nSigProton", PrimaryTrackArray_nSigProton);
+  tDet -> SetBranchAddress("PrimaryTrackArray.dcag", PrimaryTrackArray_dcag);
+  tDet -> SetBranchAddress("PrimaryTrackArray.nHits", PrimaryTrackArray_nHits);
+  tDet -> SetBranchAddress("PrimaryTrackArray.dEdxHits", PrimaryTrackArray_dEdxHits);
+  tDet -> SetBranchAddress("PrimaryTrackArray.firstZPoint", PrimaryTrackArray_firstZPoint);
+  tDet -> SetBranchAddress("PrimaryTrackArray.lastZPoint", PrimaryTrackArray_lastZPoint);
+  tDet -> SetBranchAddress("PrimaryTrackArray.tofSigElectron", PrimaryTrackArray_tofSigElectron);
+  tDet -> SetBranchAddress("PrimaryTrackArray.tofSigPion", PrimaryTrackArray_tofSigPion);
+  tDet -> SetBranchAddress("PrimaryTrackArray.tofSigKaon", PrimaryTrackArray_tofSigKaon);
+  tDet -> SetBranchAddress("PrimaryTrackArray.tofSigProton", PrimaryTrackArray_tofSigProton);
+  tDet -> SetBranchAddress("PrimaryTrackArray.timeOfflight", PrimaryTrackArray_timeOfflight);
+  tDet -> SetBranchAddress("PrimaryTrackArray.pathLength", PrimaryTrackArray_pathLength);
+  tDet -> SetBranchAddress("PrimaryTrackArray.trkIndex", PrimaryTrackArray_trkIndex);
+  tDet -> SetBranchAddress("TowerArray", &TowerArray_);
+  tDet -> SetBranchAddress("TowerArray.fUniqueID", TowerArray_fUniqueID);
+  tDet -> SetBranchAddress("TowerArray.fBits", TowerArray_fBits);
+  tDet -> SetBranchAddress("TowerArray.TwrId", TowerArray_TwrId);
+  tDet -> SetBranchAddress("TowerArray.TwrEng", TowerArray_TwrEng);
+  tDet -> SetBranchAddress("TowerArray.TwrEta", TowerArray_TwrEta);
+  tDet -> SetBranchAddress("TowerArray.TwrPhi", TowerArray_TwrPhi);
+  tDet -> SetBranchAddress("TowerArray.TwrADC", TowerArray_TwrADC);
+  tDet -> SetBranchAddress("TowerArray.TwrPed", TowerArray_TwrPed);
+  tDet -> SetBranchAddress("TowerArray.TwrRMS", TowerArray_TwrRMS);
+  tDet -> SetBranchAddress("TowerArray.TwrMatchIdnex", TowerArray_TwrMatchIdnex);
+  tDet -> SetBranchAddress("TowerArray.NoOfmatchedTrk", TowerArray_NoOfmatchedTrk);
+  tDet -> SetBranchAddress("TowerArray.TwrMatchP", TowerArray_TwrMatchP);
+  tDet -> SetBranchAddress("TowerArray.TwrPx", TowerArray_TwrPx);
+  tDet -> SetBranchAddress("TowerArray.TwrPy", TowerArray_TwrPy);
+  tDet -> SetBranchAddress("TowerArray.TwrPz", TowerArray_TwrPz);
+  tDet -> SetBranchAddress("TowerArray.fNAssocTracks", TowerArray_fNAssocTracks);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_[10]", TowerArray_fMatchedTracksArray_);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_P[10]", TowerArray_fMatchedTracksArray_P);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigPi[10]", TowerArray_fMatchedTracksArray_nSigPi);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigK[10]", TowerArray_fMatchedTracksArray_nSigK);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigP[10]", TowerArray_fMatchedTracksArray_nSigP);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_nSigE[10]", TowerArray_fMatchedTracksArray_nSigE);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_dcag[10]", TowerArray_fMatchedTracksArray_dcag);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_eta[10]", TowerArray_fMatchedTracksArray_eta);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_pT[10]", TowerArray_fMatchedTracksArray_pT);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_nFit[10]", TowerArray_fMatchedTracksArray_nFit);
+  tDet -> SetBranchAddress("TowerArray.fMatchedTracksArray_nPos[10]", TowerArray_fMatchedTracksArray_nPos);
   cout << "    Branches set." << endl;
 
 
@@ -405,106 +463,161 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
        << endl;
 
 
-  // define histograms
-  TH1D *hPhiTrk[NTrgs][NCut];
-  TH1D *hPhiRaw[NTrgs][NCut];
-  TH1D *hEtaTrk[NTrgs][NCut];
-  TH1D *hEtaRaw[NTrgs][NCut];
-  TH1D *hPtTrk[NTrgs][NCut];
-  TH1D *hPtRaw[NTrgs][NCut];
+  // define particle/detector histograms
+  TH1D *hPhiTrk[NLevel][NTrgs][NCut];
+  TH1D *hEtaTrk[NLevel][NTrgs][NCut];
+  TH1D *hPtTrk[NLevel][NTrgs][NCut];
+  // define matching histograms
+  TH1D *hPhiForEff[NLevel][NTrgs];
+  TH1D *hEtaForEff[NLevel][NTrgs];
+  TH1D *hPtForEff[NLevel][NTrgs];
+  TH2D *hPhiParVsDet[NTrgs];
+  TH2D *hEtaParVsDet[NTrgs];
+  TH2D *hPtParVsDet[NTrgs];
+  // define efficiency histograms
+  TH1D *hPhiRes[NTrgs];
   TH1D *hPhiEff[NTrgs];
+  TH1D *hEtaRes[NTrgs];
   TH1D *hEtaEff[NTrgs];
+  TH1D *hPtRes[NTrgs];
   TH1D *hPtEff[NTrgs];
+  TH1D *hPtDiff[NTrgs];
 
   // binning
-  const UInt_t   nF    = 60;
-  const UInt_t   nH    = 40;
-  const UInt_t   nPt   = 40;
-  const Double_t f[2]  = {-3.15, 3.15};
-  const Double_t h[2]  = {-1., 1.};
-  const Double_t pT[2] = {0., 20.};
-  // create histograms
-  hPhiTrk[0][0] = new TH1D("hPhiBeforeQA_pi", "", nF, f[0], f[1]);
-  hPhiTrk[1][0] = new TH1D("hPhiBeforeQA_ga", "", nF, f[0], f[1]);
-  hPhiTrk[0][1] = new TH1D("hPhiAfterQA_pi", "", nF, f[0], f[1]);
-  hPhiTrk[1][1] = new TH1D("hPhiAfterQA_ga", "", nF, f[0], f[1]);
-  hPhiRaw[0][0] = new TH1D("hPhiRawBeforeQA_pi", "", nF, f[0], f[1]);
-  hPhiRaw[1][0] = new TH1D("hPhiRawBeforeQA_ga", "", nF, f[0], f[1]);
-  hPhiRaw[0][1] = new TH1D("hPhiRawAfterQA_pi", "", nF, f[0], f[1]);
-  hPhiRaw[1][1] = new TH1D("hPhiRawAfterQA_ga", "", nF, f[0], f[1]);
-  hEtaTrk[0][0] = new TH1D("hEtaBeforeQA_pi", "", nH, h[0], h[1]);
-  hEtaTrk[1][0] = new TH1D("hEtaBeforeQA_ga", "", nH, h[0], h[1]);
-  hEtaTrk[0][1] = new TH1D("hEtaAfterQA_pi", "", nH, h[0], h[1]);
-  hEtaTrk[1][1] = new TH1D("hEtaAfterQA_ga", "", nH, h[0], h[1]);
-  hEtaRaw[0][0] = new TH1D("hEtaRawBeforeQA_pi", "", nH, h[0], h[1]);
-  hEtaRaw[1][0] = new TH1D("hEtaRawBeforeQA_ga", "", nH, h[0], h[1]);
-  hEtaRaw[0][1] = new TH1D("hEtaRawAfterQA_pi", "", nH, h[0], h[1]);
-  hEtaRaw[1][1] = new TH1D("hEtaRawAfterQA_ga", "", nH, h[0], h[1]);
-  hPtTrk[0][0]  = new TH1D("hPtBeforeQA_pi", "", nPt, pT[0], pT[1]);
-  hPtTrk[1][0]  = new TH1D("hPtBeforeQA_ga", "", nPt, pT[0], pT[1]);
-  hPtTrk[0][1]  = new TH1D("hPtAfterQA_pi", "", nPt, pT[0], pT[1]);
-  hPtTrk[1][1]  = new TH1D("hPtAfterQA_ga", "", nPt, pT[0], pT[1]);
-  hPtRaw[0][0]  = new TH1D("hPtRawBeforeQA_pi", "", nPt, pT[0], pT[1]);
-  hPtRaw[1][0]  = new TH1D("hPtRawBeforeQA_ga", "", nPt, pT[0], pT[1]);
-  hPtRaw[0][1]  = new TH1D("hPtRawAfterQA_pi", "", nPt, pT[0], pT[1]);
-  hPtRaw[1][1]  = new TH1D("hPtRawAfterQA_ga", "", nPt, pT[0], pT[1]);
-  hPhiEff[0]    = new TH1D("hPhiEfficiency_pi", "", nF, f[0], f[1]);
-  hPhiEff[1]    = new TH1D("hPhiEfficiency_ga", "", nF, f[0], f[1]);
-  hEtaEff[0]    = new TH1D("hEtaEfficiency_pi", "", nH, h[0], h[1]);
-  hEtaEff[1]    = new TH1D("hEtaEfficiency_ga", "", nH, h[0], h[1]);
-  hPtEff[0]     = new TH1D("hPtEfficiency_pi", "", nPt, pT[0], pT[1]);
-  hPtEff[1]     = new TH1D("hPtEfficiency_ga", "", nPt, pT[0], pT[1]);
+  const UInt_t   nF     = 60;
+  const UInt_t   nH     = 40;
+  const UInt_t   nPt    = 130;
+  const UInt_t   nDiff  = 44;
+  const Double_t f[2]   = {-3.15, 3.15};
+  const Double_t h[2]   = {-1., 1.};
+  const Double_t pT[2]  = {-1., 25.};
+  const Double_t dPt[2] = {-11., 11.};
+  // create particle histograms
+  hPhiTrk[0][0][0] = new TH1D("hPhiBeforeQA_piPar", "", nF, f[0], f[1]);
+  hPhiTrk[0][1][0] = new TH1D("hPhiBeforeQA_gaPar", "", nF, f[0], f[1]);
+  hPhiTrk[0][0][1] = new TH1D("hPhiAfterQA_piPar", "", nF, f[0], f[1]);
+  hPhiTrk[0][1][1] = new TH1D("hPhiAfterQA_gaPar", "", nF, f[0], f[1]);
+  hEtaTrk[0][0][0] = new TH1D("hEtaBeforeQA_piPar", "", nH, h[0], h[1]);
+  hEtaTrk[0][1][0] = new TH1D("hEtaBeforeQA_gaPar", "", nH, h[0], h[1]);
+  hEtaTrk[0][0][1] = new TH1D("hEtaAfterQA_piPar", "", nH, h[0], h[1]);
+  hEtaTrk[0][1][1] = new TH1D("hEtaAfterQA_gaPar", "", nH, h[0], h[1]);
+  hPtTrk[0][0][0]  = new TH1D("hPtBeforeQA_piPar", "", nPt, pT[0], pT[1]);
+  hPtTrk[0][1][0]  = new TH1D("hPtBeforeQA_gaPar", "", nPt, pT[0], pT[1]);
+  hPtTrk[0][0][1]  = new TH1D("hPtAfterQA_piPar", "", nPt, pT[0], pT[1]);
+  hPtTrk[0][1][1]  = new TH1D("hPtAfterQA_gaPar", "", nPt, pT[0], pT[1]);
+  // create detector histograms
+  hPhiTrk[1][0][0] = new TH1D("hPhiBeforeQA_piDet", "", nF, f[0], f[1]);
+  hPhiTrk[1][1][0] = new TH1D("hPhiBeforeQA_gaDet", "", nF, f[0], f[1]);
+  hPhiTrk[1][0][1] = new TH1D("hPhiAfterQA_piDet", "", nF, f[0], f[1]);
+  hPhiTrk[1][1][1] = new TH1D("hPhiAfterQA_gaDet", "", nF, f[0], f[1]);
+  hEtaTrk[1][0][0] = new TH1D("hEtaBeforeQA_piDet", "", nH, h[0], h[1]);
+  hEtaTrk[1][1][0] = new TH1D("hEtaBeforeQA_gaDet", "", nH, h[0], h[1]);
+  hEtaTrk[1][0][1] = new TH1D("hEtaAfterQA_piDet", "", nH, h[0], h[1]);
+  hEtaTrk[1][1][1] = new TH1D("hEtaAfterQA_gaDet", "", nH, h[0], h[1]);
+  hPtTrk[1][0][0]  = new TH1D("hPtBeforeQA_piDet", "", nPt, pT[0], pT[1]);
+  hPtTrk[1][1][0]  = new TH1D("hPtBeforeQA_gaDet", "", nPt, pT[0], pT[1]);
+  hPtTrk[1][0][1]  = new TH1D("hPtAfterQA_piDet", "", nPt, pT[0], pT[1]);
+  hPtTrk[1][1][1]  = new TH1D("hPtAfterQA_gaDet", "", nPt, pT[0], pT[1]);
+  // matching histograms
+  hPhiForEff[0][0] = new TH1D("hPhiForEff_piPar", "", nF, f[0], f[1]);
+  hPhiForEff[0][1] = new TH1D("hPhiForEff_gaPar", "", nF, f[0], f[1]);
+  hPhiForEff[1][0] = new TH1D("hPhiForEff_piDet", "", nF, f[0], f[1]);
+  hPhiForEff[1][1] = new TH1D("hPhiForEff_gaDet", "", nF, f[0], f[1]);
+  hEtaForEff[0][0] = new TH1D("hEtaForEff_piPar", "", nH, h[0], h[1]);
+  hEtaForEff[0][1] = new TH1D("hEtaForEff_gaPar", "", nH, h[0], h[1]);
+  hEtaForEff[1][0] = new TH1D("hEtaForEff_piDet", "", nH, h[0], h[1]);
+  hEtaForEff[1][1] = new TH1D("hEtaForEff_gaDet", "", nH, h[0], h[1]);
+  hPtForEff[0][0]  = new TH1D("hPtForEff_piPar", "", nPt, pT[0], pT[1]);
+  hPtForEff[0][1]  = new TH1D("hPtForEff_gaPar", "", nPt, pT[0], pT[1]);
+  hPtForEff[1][0]  = new TH1D("hPtForEff_piDet", "", nPt, pT[0], pT[1]);
+  hPtForEff[1][1]  = new TH1D("hPtForEff_gaDet", "", nPt, pT[0], pT[1]);
+  hPhiParVsDet[0]  = new TH2D("hPhiParVsDet_pi", "", nF, f[0], f[1], nF, f[0], f[1]);
+  hPhiParVsDet[1]  = new TH2D("hPhiParVsDet_ga", "", nF, f[0], f[1], nF, f[0], f[1]);
+  hEtaParVsDet[0]  = new TH2D("hEtaParVsDet_pi", "", nH, h[0], h[1], nH, h[0], h[1]);
+  hEtaParVsDet[1]  = new TH2D("hEtaParVsDet_ga", "", nH, h[0], h[1], nH, h[0], h[1]);
+  hPtParVsDet[0]   = new TH2D("hPtParVsDet_pi", "", nPt, pT[0], pT[1], nPt, pT[0], pT[1]);
+  hPtParVsDet[1]   = new TH2D("hPtParVsDet_ga", "", nPt, pT[0], pT[1], nPt, pT[0], pT[1]);
+  // create efficiency histograms
+  hPhiRes[0] = new TH1D("hPhiResponse_pi", "", nF, f[0], f[1]);
+  hPhiRes[1] = new TH1D("hPhiResponse_ga", "", nF, f[0], f[1]);
+  hPhiEff[0] = new TH1D("hPhiEfficiency_pi", "", nF, f[0], f[1]);
+  hPhiEff[1] = new TH1D("hPhiEfficiency_ga", "", nF, f[0], f[1]);
+  hEtaRes[0] = new TH1D("hEtaResponse_pi", "", nH, h[0], h[1]);
+  hEtaRes[1] = new TH1D("hEtaResponse_ga", "", nH, h[0], h[1]);
+  hEtaEff[0] = new TH1D("hEtaEfficiency_pi", "", nH, h[0], h[1]);
+  hEtaEff[1] = new TH1D("hEtaEfficiency_ga", "", nH, h[0], h[1]);
+  hPtRes[0]  = new TH1D("hPtResponse_pi", "", nPt, pT[0], pT[1]);
+  hPtRes[1]  = new TH1D("hPtResponse_ga", "", nPt, pT[0], pT[1]);
+  hPtEff[0]  = new TH1D("hPtEfficiency_pi", "", nPt, pT[0], pT[1]);
+  hPtEff[1]  = new TH1D("hPtEfficiency_ga", "", nPt, pT[0], pT[1]);
+  hPtDiff[0] = new TH1D("hPtDifference_pi", "", nDiff, dPt[0], dPt[1]);
+  hPtDiff[1] = new TH1D("hPtDifference_ga", "", nDiff, dPt[0], dPt[1]);
   // errors
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
-    hPhiEff[iTrg] -> Sumw2();
-    hEtaEff[iTrg] -> Sumw2();
-    hPtEff[iTrg]  -> Sumw2();
-    for (UInt_t iCut = 0; iCut < NCut; iCut++) {
-      hPhiTrk[iTrg][iCut] -> Sumw2();
-      hPhiRaw[iTrg][iCut] -> Sumw2();
-      hEtaTrk[iTrg][iCut] -> Sumw2();
-      hEtaRaw[iTrg][iCut] -> Sumw2();
-      hPtTrk[iTrg][iCut]  -> Sumw2();
-      hPtRaw[iTrg][iCut]  -> Sumw2();
-    }
-  }
+    hPhiRes[iTrg]      -> Sumw2();
+    hPhiEff[iTrg]      -> Sumw2();
+    hEtaRes[iTrg]      -> Sumw2();
+    hEtaEff[iTrg]      -> Sumw2();
+    hPtRes[iTrg]       -> Sumw2();
+    hPtEff[iTrg]       -> Sumw2();
+    hPtDiff[iTrg]      -> Sumw2();
+    hPhiParVsDet[iTrg] -> Sumw2();
+    hEtaParVsDet[iTrg] -> Sumw2();
+    hPtParVsDet[iTrg]  -> Sumw2();
+    for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
+      hPhiForEff[iLevel][iTrg] -> Sumw2();
+      hEtaForEff[iLevel][iTrg] -> Sumw2();
+      hPtForEff[iLevel][iTrg]  -> Sumw2();
+      for (UInt_t iCut = 0; iCut < NCut; iCut++) {
+        hPhiTrk[iLevel][iTrg][iCut] -> Sumw2();
+        hEtaTrk[iLevel][iTrg][iCut] -> Sumw2();
+        hPtTrk[iLevel][iTrg][iCut]  -> Sumw2();
+      }  // end cut loop
+    }  // end level loop
+  }  // end trigger loop
+  cout << "    Made histograms." << endl;
 
 
-  const UInt_t nEvts = tInput -> GetEntriesFast();
-  cout << "    Beginning event loop: " << nEvts << " events to process." << endl;
+  const UInt_t nParEvts = tPar -> GetEntriesFast();
+  const UInt_t nDetEvts = tDet -> GetEntriesFast();
+  cout << "    Beginning event loops: " << nDetEvts << " reconstructed and " << nParEvts << " generated events to process." << endl;
 
-  // for selecting bad evts.
-  vector<UInt_t> badIndices;
-  badIndices.clear();
+  // for selecting events and matched tracks
+  map<UInt_t, Bool_t> isGoodEntry;
+  map<UInt_t, UInt_t> triggerFlag;
+
 
   // no. of triggers
-  UInt_t nTrgBin[NTrgs];
+  UInt_t nTrgPar[NTrgs];
+  UInt_t nTrgDet[NTrgs];
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
-    nTrgBin[iTrg] = 0;
+    nTrgPar[iTrg] = 0;
+    nTrgDet[iTrg] = 0;
   }
 
 
-  // event loop
-  Int_t  bytes(0);
-  UInt_t nBytes(0);
-  for (UInt_t iEvt = 0; iEvt < nEvts; iEvt++) {
+  // detector event loop
+  Int_t  detBytes(0);
+  UInt_t nDetBytes(0);
+  for (UInt_t iDetEvt = 0; iDetEvt < nDetEvts; iDetEvt++) {
 
     // load entry
-    bytes   = tInput -> GetEntry(iEvt);
-    nBytes += bytes;
-    if (bytes < 0) {
-      cerr << "WARNING: issue with entry " << iEvt << "!" << endl;
+    detBytes   = tDet -> GetEntry(iDetEvt);
+    nDetBytes += detBytes;
+    if (detBytes < 0) {
+      cerr << "WARNING: issue with entry " << iDetEvt << "!" << endl;
       break;
     }
     else {
       if (isInBatchMode) {
-        cout << "      Processing event " << iEvt + 1 << "/" << nEvts << "..." << endl;
+        cout << "      Processing detector event " << iDetEvt + 1 << "/" << nDetEvts << "..." << endl;
       }
       else {
-        cout << "      Processing event " << iEvt + 1 << "/" << nEvts << "...\r" << flush;
-        if ((iEvt + 1) == nEvts) cout << endl;
+        cout << "      Processing detector event " << iDetEvt + 1 << "/" << nDetEvts << "...\r" << flush;
+        if ((iDetEvt + 1) == nDetEvts) cout << endl;
       }
     }
+
 
     // event info
     const UInt_t   run   = (UInt_t) runNumber;
@@ -523,28 +636,12 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
     }
 
     // event cuts
-    if (isDetectorLevel) {
-      const Bool_t isInRcut = (TMath::Abs(rVtx) < rVtxMax);
-      const Bool_t isInZcut = (TMath::Abs(zVtx) < zVtxMax);
-      if (!isGoodRun || !isInRcut || !isInZcut) {
-        badIndices.push_back(iEvt);
-        continue;
-      }
-    }
-    else {
-      Bool_t isGoodEntry = true;
-      UInt_t nBadEntries = (UInt_t) badTreeIndices.size();
-      for (UInt_t iBad = 0; iBad < nBadEntries; iBad++) {
-        UInt_t badEntry    = badTreeIndices.at(iBad);
-        Bool_t isSameEntry = (iEvt == badEntry);
-        if (isSameEntry) {
-          isGoodEntry = false;
-          break;
-        }
-      }
-      if (!isGoodEntry)
-        continue;
-    }  // end event check
+    const Bool_t isInRcut = (TMath::Abs(rVtx) < rVtxMax);
+    const Bool_t isInZcut = (TMath::Abs(zVtx) < zVtxMax);
+
+    Bool_t isGoodEvt(true);
+    if (!isGoodRun || !isInRcut || !isInZcut)
+      isGoodEvt = false;
 
 
     // trigger info
@@ -569,6 +666,7 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
     }
 
     // trigger cuts
+    UInt_t species(2);
     Bool_t isPi0(true);
     Bool_t isGam(true);
     Bool_t isGoodTrg(true);
@@ -581,140 +679,241 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
       const Bool_t isInPi0cut    = ((tsp > tspPi0[0]) && (tsp < tspPi0[1]));
       const Bool_t isInGamCut    = ((tsp > tspGam[0]) && (tsp < tspGam[1]));
       const Bool_t isInTspCut    = (isInPi0cut || isInGamCut);
-      if (!isGoodTwr || !isInAdcCut || !isInStrCut || !isInProjCut || !isInEtaTrgCut || !isInEtCut || !isInTspCut) {
+      if (!isGoodEvt || !isGoodTwr || !isInAdcCut || !isInStrCut || !isInProjCut || !isInEtaTrgCut || !isInEtCut || !isInTspCut) {
         isGoodTrg = false;
       }
       else {
+        if (isInPi0cut) species = 0;
+        if (isInGamCut) species = 1;
         isPi0     = isInPi0cut;
         isGam     = isInGamCut;
         isGoodTrg = true;
       }
     }  // end trigger check
 
+    Bool_t eventCanBeUsed = (isGoodEvt && isGoodTrg);
     if (isGoodTrg) {
-      if (isPi0) nTrgBin[0]++;
-      if (isGam) nTrgBin[1]++;
+      if (isPi0 && eventCanBeUsed) nTrgDet[0]++;
+      if (isGam && eventCanBeUsed) nTrgDet[1]++;
+      isGoodEntry[iDetEvt] = eventCanBeUsed;
+      triggerFlag[iDetEvt] = species;
     }
     else {
+      isGoodEntry[iDetEvt] = eventCanBeUsed;
+      triggerFlag[iDetEvt] = species;
       continue;
     }
 
-
-    // track loop
-    for (UInt_t iTrk = 0; iTrk < nTrks; iTrk++) {
-
-      // track info
-      const UInt_t   nFit  = PrimaryTrackArray_nHitsFit[iTrk];
-      const UInt_t   nPoss = PrimaryTrackArray_nHitsPoss[iTrk];
-      const Double_t rFit  = (Double_t) nFit / (Double_t) nPoss;
-      const Double_t dca   = PrimaryTrackArray_dcag[iTrk];
-      const Double_t chrg  = PrimaryTrackArray_charge[iTrk];
-      const Double_t hTrk  = PrimaryTrackArray_eta[iTrk];
-      const Double_t pXtrk = PrimaryTrackArray_pX[iTrk];
-      const Double_t pYtrk = PrimaryTrackArray_pY[iTrk];
-      const Double_t pTtrk = PrimaryTrackArray_pT[iTrk];
-
-      // calculate phi (if need be)
-      Double_t fCalc = TMath::ATan(pYtrk / pXtrk);
-      if (!isDetectorLevel) {
-        Bool_t isInQuad2  = ((pXtrk < 0.) && (pYtrk > 0.));
-        Bool_t isInQuad3  = ((pXtrk < 0.) && (pYtrk < 0.));
-        Bool_t isInBottom = (fCalc < 0.);
-        if (isInQuad2 && isInBottom)  fCalc += TMath::Pi();
-        if (isInQuad3 && !isInBottom) fCalc -= TMath::Pi();
-      }
-
-      Double_t fTrk = PrimaryTrackArray_phi[iTrk];
-      if (!isDetectorLevel) fTrk = fCalc;
+  }  // end detector event loop
 
 
-      // fill before histograms
-      if (isPi0) {
-        hPhiTrk[0][0] -> Fill(fTrk);
-        hPhiRaw[0][0] -> Fill(fTrk);
-        hEtaTrk[0][0] -> Fill(hTrk);
-        hEtaRaw[0][0] -> Fill(hTrk);
-        hPtTrk[0][0]  -> Fill(pTtrk);
-        hPtRaw[0][0]  -> Fill(pTtrk);
-      }
-      if (isGam) {
-        hPhiTrk[1][0] -> Fill(fTrk);
-        hPhiRaw[1][0] -> Fill(fTrk);
-        hEtaTrk[1][0] -> Fill(hTrk);
-        hEtaRaw[1][0] -> Fill(hTrk);
-        hPtTrk[1][0]  -> Fill(pTtrk);
-        hPtRaw[1][0]  -> Fill(pTtrk);
-      }
+  // particle event loop
+  Int_t  parBytes(0);
+  UInt_t nParBytes(0);
+  for (UInt_t iParEvt = 0; iParEvt < nParEvts; iParEvt++) {
 
-
-      // track cuts
-      const Bool_t isInFitCut    = (nFit > nFitMin);
-      const Bool_t isInRatioCut  = (rFit > rFitMin);
-      const Bool_t isInDcaCut    = (dca < dcaMax);
-      const Bool_t isInChrgCut   = (chrg != 0.);
-      const Bool_t isInEtaTrkCut = (TMath::Abs(hTrk) < hTrkMax);
-      const Bool_t isInPtCut     = ((pTtrk > pTtrkMin) && (pTtrk < pTtrkMax));
-
-      Bool_t isGoodTrk(true);
-      if (isDetectorLevel) {
-        if (!isInFitCut || !isInRatioCut || !isInDcaCut || !isInEtaTrkCut || !isInPtCut)
-          isGoodTrk = false;
+    // load entry
+    parBytes   = tPar -> GetEntry(iParEvt);
+    nParBytes += parBytes;
+    if (parBytes < 0) {
+      cerr << "WARNING: issue with entry " << iParEvt << "!" << endl;
+      break;
+    }
+    else {
+      if (isInBatchMode) {
+        cout << "      Processing particle event " << iParEvt + 1 << "/" << nParEvts << "..." << endl;
       }
       else {
-        if (!isInChrgCut || !isInEtaTrkCut || !isInPtCut)
-          isGoodTrk = false;
+        cout << "      Processing particle event " << iParEvt + 1 << "/" << nParEvts << "...\r" << flush;
+        if ((iParEvt + 1) == nParEvts) cout << endl;
       }
-      if (!isGoodTrk) continue;
+    }
 
 
-      // fill after histograms
+    // check event
+    Bool_t isGoodEvt = isGoodEntry[iParEvt];
+    if (!isGoodEvt) continue;
+
+    // determine trigger
+    Bool_t isPi0(true);
+    Bool_t isGam(true);
+    UInt_t trgFlag = triggerFlag[iParEvt];
+    switch (trgFlag) {
+      case 0:
+        isPi0 = true;
+        isGam = false;
+        nTrgPar[0]++;
+        break;
+      case 1:
+        isPi0 = false;
+        isGam = true;
+        nTrgPar[1]++;
+        break;
+      case 2:
+        isPi0 = true;
+        isGam = true;
+        nTrgPar[0]++;
+        nTrgPar[1]++;
+        break;
+    }
+
+
+    // particle track loop
+    const Int_t nMC = mcNumTrks;
+    for (UInt_t iMC = 0; iMC < nMC; iMC++) {
+
+      // track info
+      const Int_t    mcId  = mcIdTrk   -> at(iMC);
+      const Int_t    mcPID = mcIdGeant -> at(iMC);
+      const Int_t    mcIE  = mcIdVxEnd -> at(iMC);
+      const Double_t qMC   = mcCharge  -> at(iMC);
+      const Double_t fMC   = mcPhi     -> at(iMC);
+      const Double_t hMC   = mcEta     -> at(iMC);
+      const Double_t pTmc  = mcPt      -> at(iMC);
+
+
+      // match to detector track
+      const Bool_t isGoodEnd  = (mcIE == 0);
+      const Bool_t isGoodEta  = (TMath::Abs(hMC) < 1.);
+      const Bool_t isGoodChrg = (qMC != 0.);
+      if (isGoodEnd && isGoodEta && isGoodChrg) {
+
+        // fill particle histograms
+        if (isPi0) {
+          hPhiTrk[0][0][1] -> Fill(fMC);
+          hPhiForEff[0][0] -> Fill(fMC);
+          hEtaTrk[0][0][1] -> Fill(hMC);
+          hEtaForEff[0][0] -> Fill(hMC);
+          hPtTrk[0][0][1]  -> Fill(pTmc);
+          hPtForEff[0][0]  -> Fill(pTmc);
+        }
+        if (isGam) {
+          hPhiTrk[0][1][1] -> Fill(fMC);
+          hPhiForEff[0][1] -> Fill(fMC);
+          hEtaTrk[0][1][1] -> Fill(hMC);
+          hEtaForEff[0][1] -> Fill(hMC);
+          hPtTrk[0][1][1]  -> Fill(pTmc);
+          hPtForEff[0][1]  -> Fill(pTmc);
+        }
+
+        // load detector entry
+        Int_t  detBytes(0);
+        UInt_t nDetBytes(0);
+        detBytes   = tDet -> GetEntry(iParEvt);
+        nDetBytes += detBytes;
+        if (detBytes < 0) {
+          cerr << "WARNING: issue with entry " << iDetEvt << "!" << endl;
+          break;
+        }
+
+        // detector track loop
+        const Long64_t nTrks = nPrimaryTracks;
+        for (UInt_t iTrk = 0; iTrk < nTrks; iTrk++) {
+
+          // track info
+          const Int_t    idTruth = (Int_t) PrimaryTrackArray_tofSigElectron[iTrk];
+          const UInt_t   nFit    = PrimaryTrackArray_nHitsFit[iTrk];
+          const UInt_t   nPoss   = PrimaryTrackArray_nHitsPoss[iTrk];
+          const Double_t rFit    = (Double_t) nFit / (Double_t) nPoss;
+          const Double_t dca     = PrimaryTrackArray_dcag[iTrk];
+          const Double_t chrg    = PrimaryTrackArray_charge[iTrk];
+          const Double_t fTrk    = PrimaryTrackArray_phi[iTrk];
+          const Double_t hTrk    = PrimaryTrackArray_eta[iTrk];
+          const Double_t pTtrk   = PrimaryTrackArray_pT[iTrk];
+
+          // fill detector histograms
+          const Bool_t matchesMC = (idTruth == mcId);
+          if (matchesMC) {
+            if (isPi0) {
+              hPhiTrk[1][0][0] -> Fill(fTrk);
+              hEtaTrk[1][0][0] -> Fill(hTrk);
+              hPtTrk[1][0][0]  -> Fill(pTtrk);
+            }
+            if (isGam) {
+              hPhiTrk[1][1][0] -> Fill(fTrk);
+              hEtaTrk[1][1][0] -> Fill(hTrk);
+              hPtTrk[1][1][0]  -> Fill(pTtrk);
+            }
+          }
+
+          // track cuts
+          const Bool_t isInFitCut    = (nFit > nFitMin);
+          const Bool_t isInRatioCut  = (rFit > rFitMin);
+          const Bool_t isInDcaCut    = (dca < dcaMax);
+          const Bool_t isInChrgCut   = (chrg != 0.);
+          const Bool_t isInEtaTrkCut = (TMath::Abs(hTrk) < hTrkMax);
+          const Bool_t isInPtCut     = ((pTtrk > pTtrkMin) && (pTtrk < pTtrkMax));
+          if (!isInFitCut || !isInRatioCut || !isInDcaCut || !isInEtaTrkCut || !isInPtCut) continue;
+
+          // fill detector histograms
+          if (matchesMC) {
+            if (isPi0) {
+              hPhiTrk[1][0][1] -> Fill(fTrk);
+              hPhiForEff[1][0] -> Fill(fMC);
+              hEtaTrk[1][0][1] -> Fill(hTrk);
+              hEtaForEff[1][0] -> Fill(hMC);
+              hPtTrk[1][0][1]  -> Fill(pTtrk);
+              hPtForEff[1][0]  -> Fill(pTmc);
+            }
+            if (isGam) {
+              hPhiTrk[1][1][1] -> Fill(fTrk);
+              hPhiForEff[1][1] -> Fill(fMC);
+              hEtaTrk[1][1][1] -> Fill(hTrk);
+              hEtaForEff[1][1] -> Fill(hMC);
+              hPtTrk[1][1][1]  -> Fill(pTtrk);
+              hPtForEff[1][1]  -> Fill(pTmc);
+            }
+          }
+        }  // end detector track loop
+      }  // end matching
+
+      // fill particle histograms
       if (isPi0) {
-        hPhiTrk[0][1] -> Fill(fTrk);
-        hPhiRaw[0][1] -> Fill(fTrk);
-        hEtaTrk[0][1] -> Fill(hTrk);
-        hEtaRaw[0][1] -> Fill(hTrk);
-        hPtTrk[0][1]  -> Fill(pTtrk);
-        hPtRaw[0][1]  -> Fill(pTtrk);
+        hPhiTrk[0][0][0] -> Fill(fMC);
+        hEtaTrk[0][0][0] -> Fill(hMC);
+        hPtTrk[0][0][0]  -> Fill(pTmc);
       }
       if (isGam) {
-        hPhiTrk[1][1] -> Fill(fTrk);
-        hPhiRaw[1][1] -> Fill(fTrk);
-        hEtaTrk[1][1] -> Fill(hTrk);
-        hEtaRaw[1][1] -> Fill(hTrk);
-        hPtTrk[1][1]  -> Fill(pTtrk);
-        hPtRaw[1][1]  -> Fill(pTtrk);
+        hPhiTrk[0][1][0] -> Fill(fMC);
+        hEtaTrk[0][1][0] -> Fill(hMC);
+        hPtTrk[0][1][0]  -> Fill(pTmc);
       }
 
-    }  // end track loop
-  }  // end event loop
+    }  // end particle track loop 
+  }  // end particle event loop
 
-  cout << "    Event loop finished\n"
-       << "      " << nTrgBin[0] << " pi0 triggers,\n"
-       << "      " << nTrgBin[1] << " gamma triggers."
+  nPi0Trg = nTrgPar[0];
+  nGamTrg = nTrgPar[1];
+  cout << "    Event loops finished\n"
+       << "      " << nTrgDet[0] << " (reconstructed), " << nTrgPar[0] << " (generated)  pi0 triggers,\n"
+       << "      " << nTrgDet[1] << " (reconstructed), " << nTrgPar[1] << " (generated)  gamma triggers."
        << endl;
 
-  // assign triggers
-  nTrgPi0 = nTrgBin[0];
-  nTrgGam = nTrgBin[1];
 
   // calculate ratios
   const Float_t weight(1.);
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
-    hPhiEff[iTrg] -> Divide(hPhiTrk[iTrg][1], hPhiTrk[iTrg][0], weight, weight);
-    hEtaEff[iTrg] -> Divide(hEtaTrk[iTrg][1], hEtaTrk[iTrg][0], weight, weight);
-    hPtEff[iTrg]  -> Divide(hPtTrk[iTrg][1], hPtTrk[iTrg][0], weight, weight);
+    hPhiRes[iTrg] -> Divide(hPhiTrk[1][iTrg][1], hPhiTrk[1][iTrg][0], weight, weight);
+    hPhiEff[iTrg] -> Divide(hPhiForEff[1][iTrg], hPhiForEff[0][iTrg], weight, weight);
+    hEtaRes[iTrg] -> Divide(hEtaTrk[1][iTrg][1], hEtaTrk[1][iTrg][0], weight, weight);
+    hEtaEff[iTrg] -> Divide(hEtaForEff[1][iTrg], hEtaForEff[0][iTrg], weight, weight);
+    hPtRes[iTrg]  -> Divide(hPtTrk[1][iTrg][1], hPtTrk[1][iTrg][0], weight, weight);
+    hPtEff[iTrg]  -> Divide(hPtForEff[1][iTrg], hPtForEff[0][iTrg], weight, weight);
   }
   cout << "    Ratios calculated." << endl;
 
 
   // normalize histograms
-  for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
-    for (UInt_t iCut = 0; iCut < NCut; iCut++) {
-      hPhiTrk[iTrg][iCut] -> Scale(1. / (Double_t) nTrgBin[iTrg]);
-      hEtaTrk[iTrg][iCut] -> Scale(1. / (Double_t) nTrgBin[iTrg]);
-      hPtTrk[iTrg][iCut]  -> Scale(1. / (Double_t) nTrgBin[iTrg]);
-    }
-  }
+  const Double_t nTrg[NLevel][NTrgs] = {{(Double_t) nTrgPar[0], (Double_t) nTrgPar[1]}, {(Double_t) nTrgDet[0], (Double_t) nTrgDet[1]}};
+  for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
+    for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
+      for (UInt_t iCut = 0; iCut < NCut; iCut++) {
+        hPhiTrk[iLevel][iTrg][iCut] -> Scale(1. / nTrg[iLevel][iTrg]);
+        hEtaTrk[iLevel][iTrg][iCut] -> Scale(1. / nTrg[iLevel][iTrg]);
+        hPtTrk[iLevel][iTrg][iCut]  -> Scale(1. / nTrg[iLevel][iTrg]);
+      }  // end cut loop
+    }  // end trigger loop
+  }  // end level loop
   cout << "    Normalized track distributions." << endl;
 
 
@@ -731,35 +930,64 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   const Double_t hFitRange[2] = {-0.7, 0.7};
   const Double_t pFitRange[2] = {1., 7.};
 
+  TF1      *fPhiRes[NTrgs];
   TF1      *fPhiEff[NTrgs];
+  TF1      *fEtaRes[NTrgs];
   TF1      *fEtaEff[NTrgs];
+  TF1      *fPtRes[NTrgs];
   TF1      *fPtEff[NTrgs];
+  Double_t phiRes[NTrgs][NVal];
   Double_t phiEff[NTrgs][NVal];
+  Double_t etaRes[NTrgs][NVal];
   Double_t etaEff[NTrgs][NVal];
+  Double_t ptRes[NTrgs][NVal];
   Double_t ptEff[NTrgs][NVal];
-  Double_t ptSig[NTrgs][NVal];
+  Double_t ptSigR[NTrgs][NVal];
+  Double_t ptSigE[NTrgs][NVal];
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
 
     // make names
-    TString sPhi("fPhiEff");
-    TString sEta("fEtaEff");
-    TString sPt("fPtEff");
-    sPhi += sTrg[iTrg];
-    sEta += sTrg[iTrg];
-    sPt  += sTrg[iTrg];
+    TString sPhiR("fPhiRes");
+    TString sPhiE("fPhiEff");
+    TString sEtaR("fEtaRes");
+    TString sEtaE("fEtaEff");
+    TString sPtR("fPtRes");
+    TString sPtE("fPtEff");
+    sPhiR += sTrg[iTrg];
+    sPhiE += sTrg[iTrg];
+    sEtaR += sTrg[iTrg];
+    sEtaE += sTrg[iTrg];
+    sPtR  += sTrg[iTrg];
+    sPtE  += sTrg[iTrg];
 
     // define fits
-    fPhiEff[iTrg] = new TF1(sPhi.Data(), "[0]", f[0], f[1]);
-    fEtaEff[iTrg] = new TF1(sEta.Data(), "[0]", h[0], h[1]);
-    fPtEff[iTrg]  = new TF1(sPt.Data(), "[0]*(1-exp(-1.*[1]*x))", pT[0], pT[1]);
+    fPhiRes[iTrg] = new TF1(sPhiR.Data(), "[0]", f[0], f[1]);
+    fPhiEff[iTrg] = new TF1(sPhiE.Data(), "[0]", f[0], f[1]);
+    fEtaRes[iTrg] = new TF1(sEtaR.Data(), "[0]", h[0], h[1]);
+    fEtaEff[iTrg] = new TF1(sEtaE.Data(), "[0]", h[0], h[1]);
+    fPtRes[iTrg]  = new TF1(sPtR.Data(), "[0]*(1-exp(-1.*[1]*x))", pT[0], pT[1]);
+    fPtEff[iTrg]  = new TF1(sPtE.Data(), "[0]*(1-exp(-1.*[1]*x))", pT[0], pT[1]);
+    fPhiRes[iTrg] -> SetParameter(0, fEffGuess);
+    fPhiRes[iTrg] -> SetLineColor(fColF[iTrg]);
+    fPhiRes[iTrg] -> SetLineStyle(fLinF);
+    fPhiRes[iTrg] -> SetLineWidth(fSizF);
     fPhiEff[iTrg] -> SetParameter(0, fEffGuess);
     fPhiEff[iTrg] -> SetLineColor(fColF[iTrg]);
     fPhiEff[iTrg] -> SetLineStyle(fLinF);
     fPhiEff[iTrg] -> SetLineWidth(fSizF);
+    fEtaRes[iTrg] -> SetParameter(0, hEffGuess);
+    fEtaRes[iTrg] -> SetLineColor(fColF[iTrg]);
+    fEtaRes[iTrg] -> SetLineStyle(fLinF);
+    fEtaRes[iTrg] -> SetLineWidth(fSizF);
     fEtaEff[iTrg] -> SetParameter(0, hEffGuess);
     fEtaEff[iTrg] -> SetLineColor(fColF[iTrg]);
     fEtaEff[iTrg] -> SetLineStyle(fLinF);
     fEtaEff[iTrg] -> SetLineWidth(fSizF);
+    fPtRes[iTrg]  -> SetParameters(0, pEffGuess);
+    fPtRes[iTrg]  -> SetParameters(1, pSigGuess);
+    fPtRes[iTrg]  -> SetLineColor(fColF[iTrg]);
+    fPtRes[iTrg]  -> SetLineStyle(fLinF);
+    fPtRes[iTrg]  -> SetLineWidth(fSizF);
     fPtEff[iTrg]  -> SetParameters(0, pEffGuess);
     fPtEff[iTrg]  -> SetParameters(1, pSigGuess);
     fPtEff[iTrg]  -> SetLineColor(fColF[iTrg]);
@@ -767,26 +995,43 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
     fPtEff[iTrg]  -> SetLineWidth(fSizF);
 
     // fit histograms
+    hPhiRes[iTrg] -> Fit(fPhiRes[iTrg], "BMQ0", "", fFitRange[0], fFitRange[1]);
     hPhiEff[iTrg] -> Fit(fPhiEff[iTrg], "BMQ0", "", fFitRange[0], fFitRange[1]);
+    hEtaRes[iTrg] -> Fit(fEtaRes[iTrg], "BMQ0", "", hFitRange[0], hFitRange[1]);
     hEtaEff[iTrg] -> Fit(fEtaEff[iTrg], "BMQ0", "", hFitRange[0], hFitRange[1]);
+    hPtRes[iTrg]  -> Fit(fPtRes[iTrg], "BMQ0", "", pFitRange[0], pFitRange[1]);
     hPtEff[iTrg]  -> Fit(fPtEff[iTrg], "BMQ0", "", pFitRange[0], pFitRange[1]);
+    phiRes[iTrg][0] = fPhiRes[iTrg] -> GetParameter(0);
+    phiRes[iTrg][1] = fPhiRes[iTrg] -> GetParError(0);
     phiEff[iTrg][0] = fPhiEff[iTrg] -> GetParameter(0);
     phiEff[iTrg][1] = fPhiEff[iTrg] -> GetParError(0);
+    etaRes[iTrg][0] = fEtaRes[iTrg] -> GetParameter(0);
+    etaRes[iTrg][1] = fEtaRes[iTrg] -> GetParError(0);
     etaEff[iTrg][0] = fEtaEff[iTrg] -> GetParameter(0);
     etaEff[iTrg][1] = fEtaEff[iTrg] -> GetParError(0);
+    ptRes[iTrg][0]  = fPtRes[iTrg]  -> GetParameter(0);
+    ptRes[iTrg][1]  = fPtRes[iTrg]  -> GetParError(0);
     ptEff[iTrg][0]  = fPtEff[iTrg]  -> GetParameter(0);
     ptEff[iTrg][1]  = fPtEff[iTrg]  -> GetParError(0);
-    ptSig[iTrg][0]  = fPtEff[iTrg]  -> GetParameter(1);
-    ptSig[iTrg][1]  = fPtEff[iTrg]  -> GetParError(1);
+    ptSigR[iTrg][0] = fPtRes[iTrg]  -> GetParameter(1);
+    ptSigR[iTrg][1] = fPtRes[iTrg]  -> GetParError(1);
+    ptSigE[iTrg][0] = fPtRes[iTrg]  -> GetParameter(1);
+    ptSigE[iTrg][1] = fPtRes[iTrg]  -> GetParError(1);
 
     // reset visibility
     const Int_t kNotDraw = 1<<9;
-    if (hPhiEff[iTrg] -> GetFunction(sPhi.Data()))
-      hPhiEff[iTrg] -> GetFunction(sPhi.Data()) -> ResetBit(kNotDraw);
-    if (hEtaEff[iTrg] -> GetFunction(sEta.Data()))
-      hEtaEff[iTrg] -> GetFunction(sEta.Data()) -> ResetBit(kNotDraw);
-    if (hPtEff[iTrg] -> GetFunction(sPt.Data()))
-      hPtEff[iTrg] -> GetFunction(sPt.Data()) -> ResetBit(kNotDraw);
+    if (hPhiRes[iTrg] -> GetFunction(sPhiR.Data()))
+      hPhiRes[iTrg] -> GetFunction(sPhiR.Data()) -> ResetBit(kNotDraw);
+    if (hPhiEff[iTrg] -> GetFunction(sPhiE.Data()))
+      hPhiEff[iTrg] -> GetFunction(sPhiE.Data()) -> ResetBit(kNotDraw);
+    if (hEtaRes[iTrg] -> GetFunction(sEtaR.Data()))
+      hEtaRes[iTrg] -> GetFunction(sEtaR.Data()) -> ResetBit(kNotDraw);
+    if (hEtaEff[iTrg] -> GetFunction(sEtaE.Data()))
+      hEtaEff[iTrg] -> GetFunction(sEtaE.Data()) -> ResetBit(kNotDraw);
+    if (hPtRes[iTrg] -> GetFunction(sPtR.Data()))
+      hPtRes[iTrg] -> GetFunction(sPtR.Data()) -> ResetBit(kNotDraw);
+    if (hPtEff[iTrg] -> GetFunction(sPtE.Data()))
+      hPtEff[iTrg] -> GetFunction(sPtE.Data()) -> ResetBit(kNotDraw);
 
   }
   cout << "    Fit efficiencies." << endl;
@@ -797,29 +1042,56 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   const UInt_t  fCnt(1);
   const UInt_t  fColE(1);
   const UInt_t  fMarE(1);
-  const UInt_t  fColD[NCut] = {1, 879};
-  const UInt_t  fMarD[NCut] = {7, 4};
+  const UInt_t  fColD[NCut]  = {1, 879};
+  const UInt_t  fColM[NTrgs] = {859, 899};
+  const UInt_t  fMarD[NCut]  = {7, 4};
+  const UInt_t  fMarM[NTrgs] = {7, 4};
   const Float_t fLab(0.03);
   const Float_t fOffsetX(1.);
-  const Float_t fPhiRangeY[2] = {0., 0.47};
-  const Float_t fEtaRangeY[2] = {0., 0.73};
-  const Float_t fPtRangeY[2]  = {0.00003, 13.};
-  const Float_t fEffRangeY[2] = {0., 1.13};
+  const Float_t fPhiRangeX[2]   = {f[0], f[1]};
+  const Float_t fPhiRangeY[2]   = {0., 0.47};
+  const Float_t fEtaRangeX[2]   = {h[0], h[1]};
+  const Float_t fEtaRangeY[2]   = {0., 0.73};
+  const Float_t fPtRangeX[2]    = {-0.2, 20.2};
+  const Float_t fPtRangeY[2]    = {0.00003, 13.};
+  const Float_t fPtEffRangeX[2] = {-0.2, 7.2};
+  const Float_t fEffRangeY[2]   = {0., 1.13};
   const TString sTitleXF("#varphi^{trk}");
   const TString sTitleXH("#eta^{trk}");
   const TString sTitleXP("p_{T}^{trk}");
+  const TString sTitleYM("counts");
   const TString sTitleYF("(1/N^{trg}) dN^{trk}/d#varphi^{trk}");
+  const TString sTitleYFR("#tilde{#epsilon}(#varphi^{trk}) = #tilde{#epsilon}_{#varphi}");
   const TString sTitleYFE("#epsilon(#varphi^{trk}) = #epsilon_{#varphi}");
   const TString sTitleYH("(1/N^{trg}) dN^{trk}/d#eta^{trk}");
+  const TString sTitleYHR("#tilde{#epsilon}(#eta^{trk}) = #tilde{#epsilon}_{#eta}");
   const TString sTitleYHE("#epsilon(#eta^{trk}) = #epsilon_{#eta}");
   const TString sTitleYP("(1/N^{trg}) dN^{trk}/dp_{T}^{trk}");
-  const TString sTitleYPE("#epsilon(p_{T}^{trk}) = #epsilon_{p} #upoint (1 - exp(-#sigma #upoint p_{T}^{trk}))");
+  const TString sTitleYPR("#tilde{#epsilon}(p_{T}^{trk}) = #tilde{#epsilon}_{p} (1 - exp(-#tilde{#sigma} #upoint p_{T}^{trk}))");
+  const TString sTitleYPE("#epsilon(p_{T}^{trk}) = #epsilon_{p} (1 - exp(-#sigma #upoint p_{T}^{trk}))");
   const TString sTitleF[NTrgs] = {"Track #varphi: #pi^{0} trigger", "Track #varphi: #gamma^{rich}"};
   const TString sTitleH[NTrgs] = {"Track #eta: #pi^{0} trigger", "Track #eta: #gamma^{rich}"};
   const TString sTitleP[NTrgs] = {"Track p_{T}: #pi^{0}", "Track p_{T}: #gamma^{rich}"};
+  const TString sTitleR[NTrgs] = {"Cut response, #tilde{#epsilon}: #pi^{0} trigger", "Cut response, #tilde{#epsilon}: #gamma^{rich}"};
   const TString sTitleE[NTrgs] = {"Track efficiency, #epsilon: #pi^{0} trigger", "Track efficiency, #epsilon: #gamma^{rich}"};
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
     // phi efficiency histogram
+    hPhiRes[iTrg] -> SetLineColor(fColE);
+    hPhiRes[iTrg] -> SetMarkerColor(fColE);
+    hPhiRes[iTrg] -> SetMarkerStyle(fMarE);
+    hPhiRes[iTrg] -> SetTitle(sTitleR[iTrg].Data());
+    hPhiRes[iTrg] -> SetTitleFont(fTxt);
+    hPhiRes[iTrg] -> GetXaxis() -> SetTitle(sTitleXF.Data());
+    hPhiRes[iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
+    hPhiRes[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+    hPhiRes[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
+    hPhiRes[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+    hPhiRes[iTrg] -> GetXaxis() -> SetRangeUser(fPhiRangeX[0], fPhiRangeX[1]);
+    hPhiRes[iTrg] -> GetYaxis() -> SetTitle(sTitleYFR.Data());
+    hPhiRes[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
+    hPhiRes[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
+    hPhiRes[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
+    hPhiRes[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     hPhiEff[iTrg] -> SetLineColor(fColE);
     hPhiEff[iTrg] -> SetMarkerColor(fColE);
     hPhiEff[iTrg] -> SetMarkerStyle(fMarE);
@@ -830,12 +1102,29 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
     hPhiEff[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
     hPhiEff[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
     hPhiEff[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+    hPhiEff[iTrg] -> GetXaxis() -> SetRangeUser(fPhiRangeX[0], fPhiRangeX[1]);
     hPhiEff[iTrg] -> GetYaxis() -> SetTitle(sTitleYFE.Data());
     hPhiEff[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
     hPhiEff[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
     hPhiEff[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
     hPhiEff[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     // eta efficiency histogram
+    hEtaRes[iTrg] -> SetLineColor(fColE);
+    hEtaRes[iTrg] -> SetMarkerColor(fColE);
+    hEtaRes[iTrg] -> SetMarkerStyle(fMarE);
+    hEtaRes[iTrg] -> SetTitle(sTitleR[iTrg].Data());
+    hEtaRes[iTrg] -> SetTitleFont(fTxt);
+    hEtaRes[iTrg] -> GetXaxis() -> SetTitle(sTitleXH.Data());
+    hEtaRes[iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
+    hEtaRes[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+    hEtaRes[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
+    hEtaRes[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+    hEtaRes[iTrg] -> GetXaxis() -> SetRangeUser(fEtaRangeX[0], fEtaRangeX[1]);
+    hEtaRes[iTrg] -> GetYaxis() -> SetTitle(sTitleYHR.Data());
+    hEtaRes[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
+    hEtaRes[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
+    hEtaRes[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
+    hEtaRes[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     hEtaEff[iTrg] -> SetLineColor(fColE);
     hEtaEff[iTrg] -> SetMarkerColor(fColE);
     hEtaEff[iTrg] -> SetMarkerStyle(fMarE);
@@ -846,12 +1135,29 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
     hEtaEff[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
     hEtaEff[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
     hEtaEff[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+    hEtaEff[iTrg] -> GetXaxis() -> SetRangeUser(fEtaRangeX[0], fEtaRangeX[1]);
     hEtaEff[iTrg] -> GetYaxis() -> SetTitle(sTitleYHE.Data());
     hEtaEff[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
     hEtaEff[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
     hEtaEff[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
     hEtaEff[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     // pT efficiency histogram
+    hPtRes[iTrg] -> SetLineColor(fColE);
+    hPtRes[iTrg] -> SetMarkerColor(fColE);
+    hPtRes[iTrg] -> SetMarkerStyle(fMarE);
+    hPtRes[iTrg] -> SetTitle(sTitleR[iTrg].Data());
+    hPtRes[iTrg] -> SetTitleFont(fTxt);
+    hPtRes[iTrg] -> GetXaxis() -> SetTitle(sTitleXP.Data());
+    hPtRes[iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
+    hPtRes[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+    hPtRes[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
+    hPtRes[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+    hPtRes[iTrg] -> GetXaxis() -> SetRangeUser(fPtEffRangeX[0], fPtEffRangeX[1]);
+    hPtRes[iTrg] -> GetYaxis() -> SetTitle(sTitleYPR.Data());
+    hPtRes[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
+    hPtRes[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
+    hPtRes[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
+    hPtRes[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     hPtEff[iTrg] -> SetLineColor(fColE);
     hPtEff[iTrg] -> SetMarkerColor(fColE);
     hPtEff[iTrg] -> SetMarkerStyle(fMarE);
@@ -862,61 +1168,115 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
     hPtEff[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
     hPtEff[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
     hPtEff[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+    hPtEff[iTrg] -> GetXaxis() -> SetRangeUser(fPtEffRangeX[0], fPtEffRangeX[1]);
     hPtEff[iTrg] -> GetYaxis() -> SetTitle(sTitleYPE.Data());
     hPtEff[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
     hPtEff[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
     hPtEff[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
     hPtEff[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
-    for (UInt_t iCut = 0; iCut < NCut; iCut++) {
+    for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
       // phi histograms
-      hPhiTrk[iTrg][iCut] -> SetLineColor(fColD[iCut]);
-      hPhiTrk[iTrg][iCut] -> SetMarkerColor(fColD[iCut]);
-      hPhiTrk[iTrg][iCut] -> SetMarkerStyle(fMarD[iCut]);
-      hPhiTrk[iTrg][iCut] -> SetTitle(sTitleF[iTrg].Data());
-      hPhiTrk[iTrg][iCut] -> SetTitleFont(fTxt);
-      hPhiTrk[iTrg][iCut] -> GetXaxis() -> SetTitle(sTitleXF.Data());
-      hPhiTrk[iTrg][iCut] -> GetXaxis() -> SetTitleFont(fTxt);
-      hPhiTrk[iTrg][iCut] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-      hPhiTrk[iTrg][iCut] -> GetXaxis() -> CenterTitle(fCnt);
-      hPhiTrk[iTrg][iCut] -> GetXaxis() -> SetLabelSize(fLab);
-      hPhiTrk[iTrg][iCut] -> GetYaxis() -> SetTitle(sTitleYF.Data());
-      hPhiTrk[iTrg][iCut] -> GetYaxis() -> SetTitleFont(fTxt);
-      hPhiTrk[iTrg][iCut] -> GetYaxis() -> CenterTitle(fCnt);
-      hPhiTrk[iTrg][iCut] -> GetYaxis() -> SetLabelSize(fLab);
-      hPhiTrk[iTrg][iCut] -> GetYaxis() -> SetRangeUser(fPhiRangeY[0], fPhiRangeY[1]);
+      hPhiForEff[iLevel][iTrg] -> SetLineColor(fColM[iTrg]);
+      hPhiForEff[iLevel][iTrg] -> SetMarkerColor(fColM[iTrg]);
+      hPhiForEff[iLevel][iTrg] -> SetMarkerStyle(fMarM[iTrg]);
+      hPhiForEff[iLevel][iTrg] -> SetTitle(sTitleF[iTrg].Data());
+      hPhiForEff[iLevel][iTrg] -> SetTitleFont(fTxt);
+      hPhiForEff[iLevel][iTrg] -> GetXaxis() -> SetTitle(sTitleXF.Data());
+      hPhiForEff[iLevel][iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
+      hPhiForEff[iLevel][iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+      hPhiForEff[iLevel][iTrg] -> GetXaxis() -> CenterTitle(fCnt);
+      hPhiForEff[iLevel][iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+      hPhiForEff[iLevel][iTrg] -> GetXaxis() -> SetRangeUser(fPhiRangeX[0], fPhiRangeX[1]);
+      hPhiForEff[iLevel][iTrg] -> GetYaxis() -> SetTitle(sTitleYM.Data());
+      hPhiForEff[iLevel][iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
+      hPhiForEff[iLevel][iTrg] -> GetYaxis() -> CenterTitle(fCnt);
+      hPhiForEff[iLevel][iTrg] -> GetYaxis() -> SetLabelSize(fLab);
       // eta histograms
-      hEtaTrk[iTrg][iCut] -> SetLineColor(fColD[iCut]);
-      hEtaTrk[iTrg][iCut] -> SetMarkerColor(fColD[iCut]);
-      hEtaTrk[iTrg][iCut] -> SetMarkerStyle(fMarD[iCut]);
-      hEtaTrk[iTrg][iCut] -> SetTitle(sTitleH[iTrg].Data());
-      hEtaTrk[iTrg][iCut] -> SetTitleFont(fTxt);
-      hEtaTrk[iTrg][iCut] -> GetXaxis() -> SetTitle(sTitleXH.Data());
-      hEtaTrk[iTrg][iCut] -> GetXaxis() -> SetTitleFont(fTxt);
-      hEtaTrk[iTrg][iCut] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-      hEtaTrk[iTrg][iCut] -> GetXaxis() -> CenterTitle(fCnt);
-      hEtaTrk[iTrg][iCut] -> GetXaxis() -> SetLabelSize(fLab);
-      hEtaTrk[iTrg][iCut] -> GetYaxis() -> SetTitle(sTitleYH.Data());
-      hEtaTrk[iTrg][iCut] -> GetYaxis() -> SetTitleFont(fTxt);
-      hEtaTrk[iTrg][iCut] -> GetYaxis() -> CenterTitle(fCnt);
-      hEtaTrk[iTrg][iCut] -> GetYaxis() -> SetLabelSize(fLab);
-      hEtaTrk[iTrg][iCut] -> GetYaxis() -> SetRangeUser(fEtaRangeY[0], fEtaRangeY[1]);
+      hEtaForEff[iLevel][iTrg] -> SetLineColor(fColM[iTrg]);
+      hEtaForEff[iLevel][iTrg] -> SetMarkerColor(fColM[iTrg]);
+      hEtaForEff[iLevel][iTrg] -> SetMarkerStyle(fMarM[iTrg]);
+      hEtaForEff[iLevel][iTrg] -> SetTitle(sTitleH[iTrg].Data());
+      hEtaForEff[iLevel][iTrg] -> SetTitleFont(fTxt);
+      hEtaForEff[iLevel][iTrg] -> GetXaxis() -> SetTitle(sTitleXH.Data());
+      hEtaForEff[iLevel][iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
+      hEtaForEff[iLevel][iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+      hEtaForEff[iLevel][iTrg] -> GetXaxis() -> CenterTitle(fCnt);
+      hEtaForEff[iLevel][iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+      hEtaForEff[iLevel][iTrg] -> GetXaxis() -> SetRangeUser(fEtaRangeX[0], fEtaRangeX[1]);
+      hEtaForEff[iLevel][iTrg] -> GetYaxis() -> SetTitle(sTitleYM.Data());
+      hEtaForEff[iLevel][iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
+      hEtaForEff[iLevel][iTrg] -> GetYaxis() -> CenterTitle(fCnt);
+      hEtaForEff[iLevel][iTrg] -> GetYaxis() -> SetLabelSize(fLab);
       // pT histograms
-      hPtTrk[iTrg][iCut] -> SetLineColor(fColD[iCut]);
-      hPtTrk[iTrg][iCut] -> SetMarkerColor(fColD[iCut]);
-      hPtTrk[iTrg][iCut] -> SetMarkerStyle(fMarD[iCut]);
-      hPtTrk[iTrg][iCut] -> SetTitle(sTitleP[iTrg].Data());
-      hPtTrk[iTrg][iCut] -> SetTitleFont(fTxt);
-      hPtTrk[iTrg][iCut] -> GetXaxis() -> SetTitle(sTitleXP.Data());
-      hPtTrk[iTrg][iCut] -> GetXaxis() -> SetTitleFont(fTxt);
-      hPtTrk[iTrg][iCut] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-      hPtTrk[iTrg][iCut] -> GetXaxis() -> CenterTitle(fCnt);
-      hPtTrk[iTrg][iCut] -> GetXaxis() -> SetLabelSize(fLab);
-      hPtTrk[iTrg][iCut] -> GetYaxis() -> SetTitle(sTitleYP.Data());
-      hPtTrk[iTrg][iCut] -> GetYaxis() -> SetTitleFont(fTxt);
-      hPtTrk[iTrg][iCut] -> GetYaxis() -> CenterTitle(fCnt);
-      hPtTrk[iTrg][iCut] -> GetYaxis() -> SetLabelSize(fLab);
-      hPtTrk[iTrg][iCut] -> GetYaxis() -> SetRangeUser(fPtRangeY[0], fPtRangeY[1]);
-    }  // end cut loop
+      hPtForEff[iLevel][iTrg] -> SetLineColor(fColM[iTrg]);
+      hPtForEff[iLevel][iTrg] -> SetMarkerColor(fColM[iTrg]);
+      hPtForEff[iLevel][iTrg] -> SetMarkerStyle(fMarM[iTrg]);
+      hPtForEff[iLevel][iTrg] -> SetTitle(sTitleP[iTrg].Data());
+      hPtForEff[iLevel][iTrg] -> SetTitleFont(fTxt);
+      hPtForEff[iLevel][iTrg] -> GetXaxis() -> SetTitle(sTitleXP.Data());
+      hPtForEff[iLevel][iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
+      hPtForEff[iLevel][iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+      hPtForEff[iLevel][iTrg] -> GetXaxis() -> CenterTitle(fCnt);
+      hPtForEff[iLevel][iTrg] -> GetXaxis() -> SetLabelSize(fLab);
+      hPtForEff[iLevel][iTrg] -> GetXaxis() -> SetRangeUser(fPtRangeX[0], fPtRangeX[1]);
+      hPtForEff[iLevel][iTrg] -> GetYaxis() -> SetTitle(sTitleYM.Data());
+      hPtForEff[iLevel][iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
+      hPtForEff[iLevel][iTrg] -> GetYaxis() -> CenterTitle(fCnt);
+      hPtForEff[iLevel][iTrg] -> GetYaxis() -> SetLabelSize(fLab);
+      for (UInt_t iCut = 0; iCut < NCut; iCut++) {
+        // phi histograms
+        hPhiTrk[iLevel][iTrg][iCut] -> SetLineColor(fColD[iCut]);
+        hPhiTrk[iLevel][iTrg][iCut] -> SetMarkerColor(fColD[iCut]);
+        hPhiTrk[iLevel][iTrg][iCut] -> SetMarkerStyle(fMarD[iCut]);
+        hPhiTrk[iLevel][iTrg][iCut] -> SetTitle(sTitleF[iTrg].Data());
+        hPhiTrk[iLevel][iTrg][iCut] -> SetTitleFont(fTxt);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitle(sTitleXF.Data());
+        hPhiTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitleFont(fTxt);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetXaxis() -> CenterTitle(fCnt);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetLabelSize(fLab);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetRangeUser(fPhiRangeX[0], fPhiRangeX[1]);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetTitle(sTitleYF.Data());
+        hPhiTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetTitleFont(fTxt);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetYaxis() -> CenterTitle(fCnt);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetLabelSize(fLab);
+        hPhiTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetRangeUser(fPhiRangeY[0], fPhiRangeY[1]);
+        // eta histograms
+        hEtaTrk[iLevel][iTrg][iCut] -> SetLineColor(fColD[iCut]);
+        hEtaTrk[iLevel][iTrg][iCut] -> SetMarkerColor(fColD[iCut]);
+        hEtaTrk[iLevel][iTrg][iCut] -> SetMarkerStyle(fMarD[iCut]);
+        hEtaTrk[iLevel][iTrg][iCut] -> SetTitle(sTitleH[iTrg].Data());
+        hEtaTrk[iLevel][iTrg][iCut] -> SetTitleFont(fTxt);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitle(sTitleXH.Data());
+        hEtaTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitleFont(fTxt);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetXaxis() -> CenterTitle(fCnt);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetLabelSize(fLab);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetRangeUser(fEtaRangeX[0], fEtaRangeX[1]);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetTitle(sTitleYH.Data());
+        hEtaTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetTitleFont(fTxt);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetYaxis() -> CenterTitle(fCnt);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetLabelSize(fLab);
+        hEtaTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetRangeUser(fEtaRangeY[0], fEtaRangeY[1]);
+        // pT histograms
+        hPtTrk[iLevel][iTrg][iCut] -> SetLineColor(fColD[iCut]);
+        hPtTrk[iLevel][iTrg][iCut] -> SetMarkerColor(fColD[iCut]);
+        hPtTrk[iLevel][iTrg][iCut] -> SetMarkerStyle(fMarD[iCut]);
+        hPtTrk[iLevel][iTrg][iCut] -> SetTitle(sTitleP[iTrg].Data());
+        hPtTrk[iLevel][iTrg][iCut] -> SetTitleFont(fTxt);
+        hPtTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitle(sTitleXP.Data());
+        hPtTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitleFont(fTxt);
+        hPtTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+        hPtTrk[iLevel][iTrg][iCut] -> GetXaxis() -> CenterTitle(fCnt);
+        hPtTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetLabelSize(fLab);
+        hPtTrk[iLevel][iTrg][iCut] -> GetXaxis() -> SetRangeUser(fPtRangeX[0], fPtRangeX[1]);
+        hPtTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetTitle(sTitleYP.Data());
+        hPtTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetTitleFont(fTxt);
+        hPtTrk[iLevel][iTrg][iCut] -> GetYaxis() -> CenterTitle(fCnt);
+        hPtTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetLabelSize(fLab);
+        hPtTrk[iLevel][iTrg][iCut] -> GetYaxis() -> SetRangeUser(fPtRangeY[0], fPtRangeY[1]);
+      }  // end cut loop
+    }  // end level loop
   }  // end trigger loop
   cout << "    Set styles." << endl;
 
@@ -932,118 +1292,221 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   const Float_t yLeg[2]      = {0.5, 0.7};
   const TString sSystem("pp-collisions, #sqrt{s} = 200 GeV");
   const TString sTrgKin("E_{T}^{trg} #in (9, 20) GeV, |#eta^{trg}| < 0.9");
+  const TString sPhiRes("#tilde{#epsilon}_{#varphi} = ");
   const TString sPhiEff("#epsilon_{#varphi} = ");
+  const TString sEtaRes("#tilde{#epsilon}_{#eta} = ");
   const TString sEtaEff("#epsilon_{#eta} = ");
+  const TString sPtRes("#tilde{#epsilon}_{p} = ");
   const TString sPtEff("#epsilon_{p} = ");
-  const TString sPtSig("#sigma_{p} = ");
-  const TString sLegend[2] = {"before QA cuts", "after QA cuts"};
+  const TString sPtSigR("#tilde{#sigma}_{p} = ");
+  const TString sPtSigE("#sigma_{p} = ");
+  const TString sLegRes[2] = {"before QA cuts", "after QA cuts"};
+  const TString sLegEff[2] = {"particle", "detector"};
 
-  TLegend   *lPhi[NTrgs];
-  TLegend   *lEta[NTrgs];
-  TLegend   *lPt[NTrgs];
-  TPaveText *pPhi[NTrgs];
-  TPaveText *pEta[NTrgs];
-  TPaveText *pPt[NTrgs];
-  TString sFraw[NVal];
-  TString sHraw[NVal];
-  TString sPEraw[NVal];
-  TString sPSraw[NVal];
+  TLegend   *lPhiR[NTrgs];
+  TLegend   *lPhiE[NTrgs];
+  TLegend   *lEtaR[NTrgs];
+  TLegend   *lEtaE[NTrgs];
+  TLegend   *lPtR[NTrgs];
+  TLegend   *lPtE[NTrgs];
+  TPaveText *pPhiR[NTrgs];
+  TPaveText *pPhiE[NTrgs];
+  TPaveText *pEtaR[NTrgs];
+  TPaveText *pEtaE[NTrgs];
+  TPaveText *pPtR[NTrgs];
+  TPaveText *pPtE[NTrgs];
+  TString   sFrawR[NVal];
+  TString   sFrawE[NVal];
+  TString   sHrawR[NVal];
+  TString   sHrawE[NVal];
+  TString   sPErawR[NVal];
+  TString   sPErawE[NVal];
+  TString   sPSrawR[NVal];
+  TString   sPSrawE[NVal];
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
 
-    TString sFtxt(sPhiEff.Data());
-    TString sHtxt(sEtaEff.Data());
-    TString sPEtxt(sPtEff.Data());
-    TString sPStxt(sPtSig.Data());
+    TString sFtxtR(sPhiRes.Data());
+    TString sFtxtE(sPhiEff.Data());
+    TString sHtxtR(sEtaRes.Data());
+    TString sHtxtE(sEtaEff.Data());
+    TString sPEtxtR(sPtRes.Data());
+    TString sPEtxtE(sPtEff.Data());
+    TString sPStxtR(sPtSigR.Data());
+    TString sPStxtE(sPtSigE.Data());
     for (UInt_t iVal = 0; iVal < NVal; iVal++) {
-      sFraw[iVal]   = "";
-      sHraw[iVal]   = "";
-      sPEraw[iVal]  = "";
-      sPSraw[iVal]  = "";
-      sFraw[iVal]  += phiEff[iTrg][iVal];
-      sHraw[iVal]  += etaEff[iTrg][iVal];
-      sPEraw[iVal] += ptEff[iTrg][iVal];
-      sPSraw[iVal] += ptSig[iTrg][iVal];
+      sFrawR[iVal]   = "";
+      sFrawE[iVal]   = "";
+      sHrawR[iVal]   = "";
+      sHrawE[iVal]   = "";
+      sPErawR[iVal]  = "";
+      sPErawE[iVal]  = "";
+      sPSrawR[iVal]  = "";
+      sPSrawE[iVal]  = "";
+      sFrawR[iVal]  += phiRes[iTrg][iVal];
+      sFrawE[iVal]  += phiEff[iTrg][iVal];
+      sHrawR[iVal]  += etaRes[iTrg][iVal];
+      sHrawE[iVal]  += etaEff[iTrg][iVal];
+      sPErawR[iVal] += ptRes[iTrg][iVal];
+      sPErawE[iVal] += ptEff[iTrg][iVal];
+      sPSrawR[iVal] += ptSigR[iTrg][iVal];
+      sPSrawE[iVal] += ptSigE[iTrg][iVal];
 
-      const UInt_t nFraw  = sFraw[iVal].First(".");
-      const UInt_t nHraw  = sHraw[iVal].First(".");
-      const UInt_t nPEraw = sPEraw[iVal].First(".");
-      const UInt_t nPSraw = sPSraw[iVal].First(".");
-      const UInt_t nFtxt  = (nFraw + nDec) + 1;
-      const UInt_t nHtxt  = (nHraw + nDec) + 1;
-      const UInt_t nPEtxt = (nPEraw + nDec) + 1;
-      const UInt_t nPStxt = (nPSraw + nDec) + 1;
+      const UInt_t nFrawR  = sFrawR[iVal].First(".");
+      const UInt_t nFrawE  = sFrawE[iVal].First(".");
+      const UInt_t nHrawR  = sHrawR[iVal].First(".");
+      const UInt_t nHrawE  = sHrawE[iVal].First(".");
+      const UInt_t nPErawR = sPErawR[iVal].First(".");
+      const UInt_t nPErawE = sPErawE[iVal].First(".");
+      const UInt_t nPSrawR = sPSrawR[iVal].First(".");
+      const UInt_t nPSrawE = sPSrawE[iVal].First(".");
+      const UInt_t nFtxtR  = (nFrawR + nDec) + 1;
+      const UInt_t nFtxtE  = (nFrawE + nDec) + 1;
+      const UInt_t nHtxtR  = (nHrawR + nDec) + 1;
+      const UInt_t nHtxtE  = (nHrawE + nDec) + 1;
+      const UInt_t nPEtxtR = (nPErawR + nDec) + 1;
+      const UInt_t nPEtxtE = (nPErawE + nDec) + 1;
+      const UInt_t nPStxtR = (nPSrawR + nDec) + 1;
+      const UInt_t nPStxtE = (nPSrawE + nDec) + 1;
       if (iVal == 0) {
-        sFtxt.Append(sFraw[iVal].Data(), nFtxt);
-        sHtxt.Append(sHraw[iVal].Data(), nHtxt);
-        sPEtxt.Append(sPEraw[iVal].Data(), nPEtxt);
-        sPStxt.Append(sPSraw[iVal].Data(), nPStxt);
+        sFtxtR.Append(sFrawR[iVal].Data(), nFtxtR);
+        sFtxtE.Append(sFrawE[iVal].Data(), nFtxtE);
+        sHtxtR.Append(sHrawR[iVal].Data(), nHtxtR);
+        sHtxtE.Append(sHrawE[iVal].Data(), nHtxtE);
+        sPEtxtR.Append(sPErawR[iVal].Data(), nPEtxtR);
+        sPEtxtE.Append(sPErawE[iVal].Data(), nPEtxtE);
+        sPStxtR.Append(sPSrawR[iVal].Data(), nPStxtR);
+        sPStxtE.Append(sPSrawE[iVal].Data(), nPStxtE);
       } 
       else {
-        sFtxt  += " #pm ";
-        sHtxt  += " #pm ";
-        sPEtxt += " #pm ";
-        sPStxt += " #pm ";
-        sFtxt.Append(sFraw[iVal].Data(), nFtxt);
-        sHtxt.Append(sHraw[iVal].Data(), nHtxt);
-        sPEtxt.Append(sPEraw[iVal].Data(), nPEtxt);
-        sPStxt.Append(sPSraw[iVal].Data(), nPStxt);
+        sFtxtR  += " #pm ";
+        sFtxtE  += " #pm ";
+        sHtxtR  += " #pm ";
+        sHtxtE  += " #pm ";
+        sPEtxtR += " #pm ";
+        sPEtxtE += " #pm ";
+        sPStxtR += " #pm ";
+        sPStxtE += " #pm ";
+        sFtxtR.Append(sFrawR[iVal].Data(), nFtxtR);
+        sFtxtE.Append(sFrawE[iVal].Data(), nFtxtE);
+        sHtxtR.Append(sHrawR[iVal].Data(), nHtxtR);
+        sHtxtE.Append(sHrawE[iVal].Data(), nHtxtE);
+        sPEtxtR.Append(sPErawR[iVal].Data(), nPEtxtR);
+        sPEtxtE.Append(sPErawE[iVal].Data(), nPEtxtE);
+        sPStxtR.Append(sPSrawR[iVal].Data(), nPStxtR);
+        sPStxtE.Append(sPSrawE[iVal].Data(), nPStxtE);
       }
     }  // end value loop
 
     // phi labels
-    pPhi[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
-    pPhi[iTrg] -> SetFillColor(fColP);
-    pPhi[iTrg] -> SetLineColor(fColP);
-    pPhi[iTrg] -> SetTextColor(fColT[iTrg]);
-    pPhi[iTrg] -> SetTextFont(fTxt);
-    pPhi[iTrg] -> SetTextAlign(fAlign);
-    pPhi[iTrg] -> AddText(sSystem.Data());
-    pPhi[iTrg] -> AddText(sTrgKin.Data());
-    pPhi[iTrg] -> AddText(sFtxt.Data());
+    pPhiR[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
+    pPhiR[iTrg] -> SetFillColor(fColP);
+    pPhiR[iTrg] -> SetLineColor(fColP);
+    pPhiR[iTrg] -> SetTextColor(fColT[iTrg]);
+    pPhiR[iTrg] -> SetTextFont(fTxt);
+    pPhiR[iTrg] -> SetTextAlign(fAlign);
+    pPhiR[iTrg] -> AddText(sSystem.Data());
+    pPhiR[iTrg] -> AddText(sTrgKin.Data());
+    pPhiR[iTrg] -> AddText(sFtxtR.Data());
+
+    pPhiE[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
+    pPhiE[iTrg] -> SetFillColor(fColP);
+    pPhiE[iTrg] -> SetLineColor(fColP);
+    pPhiE[iTrg] -> SetTextColor(fColT[iTrg]);
+    pPhiE[iTrg] -> SetTextFont(fTxt);
+    pPhiE[iTrg] -> SetTextAlign(fAlign);
+    pPhiE[iTrg] -> AddText(sSystem.Data());
+    pPhiE[iTrg] -> AddText(sTrgKin.Data());
+    pPhiE[iTrg] -> AddText(sFtxtE.Data());
+
     // eta labels
-    pEta[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
-    pEta[iTrg] -> SetFillColor(fColP);
-    pEta[iTrg] -> SetLineColor(fColP);
-    pEta[iTrg] -> SetTextColor(fColT[iTrg]);
-    pEta[iTrg] -> SetTextFont(fTxt);
-    pEta[iTrg] -> SetTextAlign(fAlign);
-    pEta[iTrg] -> AddText(sSystem.Data());
-    pEta[iTrg] -> AddText(sTrgKin.Data());
-    pEta[iTrg] -> AddText(sHtxt.Data());
+    pEtaR[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
+    pEtaR[iTrg] -> SetFillColor(fColP);
+    pEtaR[iTrg] -> SetLineColor(fColP);
+    pEtaR[iTrg] -> SetTextColor(fColT[iTrg]);
+    pEtaR[iTrg] -> SetTextFont(fTxt);
+    pEtaR[iTrg] -> SetTextAlign(fAlign);
+    pEtaR[iTrg] -> AddText(sSystem.Data());
+    pEtaR[iTrg] -> AddText(sTrgKin.Data());
+    pEtaR[iTrg] -> AddText(sHtxtR.Data());
+
+    pEtaE[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
+    pEtaE[iTrg] -> SetFillColor(fColP);
+    pEtaE[iTrg] -> SetLineColor(fColP);
+    pEtaE[iTrg] -> SetTextColor(fColT[iTrg]);
+    pEtaE[iTrg] -> SetTextFont(fTxt);
+    pEtaE[iTrg] -> SetTextAlign(fAlign);
+    pEtaE[iTrg] -> AddText(sSystem.Data());
+    pEtaE[iTrg] -> AddText(sTrgKin.Data());
+    pEtaE[iTrg] -> AddText(sHtxtE.Data());
+
     // pT labels
-    pPt[iTrg]  = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
-    pPt[iTrg] -> SetFillColor(fColP);
-    pPt[iTrg] -> SetLineColor(fColP);
-    pPt[iTrg] -> SetTextColor(fColT[iTrg]);
-    pPt[iTrg] -> SetTextFont(fTxt);
-    pPt[iTrg] -> SetTextAlign(fAlign);
-    pPt[iTrg] -> AddText(sSystem.Data());
-    pPt[iTrg] -> AddText(sTrgKin.Data());
-    pPt[iTrg] -> AddText(sPEtxt.Data());
-    pPt[iTrg] -> AddText(sPStxt.Data());
+    pPtR[iTrg]  = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
+    pPtR[iTrg] -> SetFillColor(fColP);
+    pPtR[iTrg] -> SetLineColor(fColP);
+    pPtR[iTrg] -> SetTextColor(fColT[iTrg]);
+    pPtR[iTrg] -> SetTextFont(fTxt);
+    pPtR[iTrg] -> SetTextAlign(fAlign);
+    pPtR[iTrg] -> AddText(sSystem.Data());
+    pPtR[iTrg] -> AddText(sTrgKin.Data());
+    pPtR[iTrg] -> AddText(sPEtxtR.Data());
+    pPtR[iTrg] -> AddText(sPStxtR.Data());
+
+    pPtE[iTrg]  = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
+    pPtE[iTrg] -> SetFillColor(fColP);
+    pPtE[iTrg] -> SetLineColor(fColP);
+    pPtE[iTrg] -> SetTextColor(fColT[iTrg]);
+    pPtE[iTrg] -> SetTextFont(fTxt);
+    pPtE[iTrg] -> SetTextAlign(fAlign);
+    pPtE[iTrg] -> AddText(sSystem.Data());
+    pPtE[iTrg] -> AddText(sTrgKin.Data());
+    pPtE[iTrg] -> AddText(sPEtxtE.Data());
+    pPtE[iTrg] -> AddText(sPStxtE.Data());
 
 
     // phi legend
-    lPhi[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
-    lPhi[iTrg] -> SetFillColor(fColP);
-    lPhi[iTrg] -> SetLineColor(fColP);
-    lPhi[iTrg] -> SetTextFont(fTxt);
-    lPhi[iTrg] -> AddEntry(hPhiTrk[iTrg][0], sLegend[0].Data());
-    lPhi[iTrg] -> AddEntry(hPhiTrk[iTrg][1], sLegend[1].Data());
+    lPhiR[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
+    lPhiR[iTrg] -> SetFillColor(fColP);
+    lPhiR[iTrg] -> SetLineColor(fColP);
+    lPhiR[iTrg] -> SetTextFont(fTxt);
+    lPhiR[iTrg] -> AddEntry(hPhiTrk[1][iTrg][0], sLegRes[0].Data());
+    lPhiR[iTrg] -> AddEntry(hPhiTrk[1][iTrg][1], sLegRes[1].Data());
+
+    lPhiE[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
+    lPhiE[iTrg] -> SetFillColor(fColP);
+    lPhiE[iTrg] -> SetLineColor(fColP);
+    lPhiE[iTrg] -> SetTextFont(fTxt);
+    lPhiE[iTrg] -> AddEntry(hPhiForEff[0][iTrg], sLegEff[0].Data());
+    lPhiE[iTrg] -> AddEntry(hPhiForEff[1][iTrg], sLegEff[1].Data());
+
     // eta legend
-    lEta[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
-    lEta[iTrg] -> SetFillColor(fColP);
-    lEta[iTrg] -> SetLineColor(fColP);
-    lEta[iTrg] -> SetTextFont(fTxt);
-    lEta[iTrg] -> AddEntry(hEtaTrk[iTrg][0], sLegend[0].Data());
-    lEta[iTrg] -> AddEntry(hEtaTrk[iTrg][1], sLegend[1].Data());
+    lEtaR[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
+    lEtaR[iTrg] -> SetFillColor(fColP);
+    lEtaR[iTrg] -> SetLineColor(fColP);
+    lEtaR[iTrg] -> SetTextFont(fTxt);
+    lEtaR[iTrg] -> AddEntry(hEtaTrk[1][iTrg][0], sLegRes[0].Data());
+    lEtaR[iTrg] -> AddEntry(hEtaTrk[1][iTrg][1], sLegRes[1].Data());
+
+    lEtaE[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
+    lEtaE[iTrg] -> SetFillColor(fColP);
+    lEtaE[iTrg] -> SetLineColor(fColP);
+    lEtaE[iTrg] -> SetTextFont(fTxt);
+    lEtaE[iTrg] -> AddEntry(hEtaForEff[0][iTrg], sLegEff[0].Data());
+    lEtaE[iTrg] -> AddEntry(hEtaForEff[1][iTrg], sLegEff[1].Data());
+
     // pT legend
-    lPt[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
-    lPt[iTrg] -> SetFillColor(fColP);
-    lPt[iTrg] -> SetLineColor(fColP);
-    lPt[iTrg] -> SetTextFont(fTxt);
-    lPt[iTrg] -> AddEntry(hPtTrk[iTrg][0], sLegend[0].Data());
-    lPt[iTrg] -> AddEntry(hPtTrk[iTrg][1], sLegend[1].Data());
+    lPtR[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
+    lPtR[iTrg] -> SetFillColor(fColP);
+    lPtR[iTrg] -> SetLineColor(fColP);
+    lPtR[iTrg] -> SetTextFont(fTxt);
+    lPtR[iTrg] -> AddEntry(hPtTrk[1][iTrg][0], sLegRes[0].Data());
+    lPtR[iTrg] -> AddEntry(hPtTrk[1][iTrg][1], sLegRes[1].Data());
+
+    lPtE[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
+    lPtE[iTrg] -> SetFillColor(fColP);
+    lPtE[iTrg] -> SetLineColor(fColP);
+    lPtE[iTrg] -> SetTextFont(fTxt);
+    lPtE[iTrg] -> AddEntry(hPtForEff[0][iTrg], sLegEff[0].Data());
+    lPtE[iTrg] -> AddEntry(hPtForEff[1][iTrg], sLegEff[1].Data());
 
   }  // end trigger loop
   cout << "    Made labels." << endl;
@@ -1051,24 +1514,39 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
 
 
   // make directories and save histograms
-  const TString sDir[NTrgs] = {"pi0", "gamma"};
+  const TString sTrgDir[NTrgs]  = {"pi0", "gamma"};
+  const TString sLevDir[NLevel] = {"particle", "detector"};
 
-  TDirectory *dirs[NTrgs];
+  TDirectory *dTrgs[NTrgs];
+  TDirectory *dLvls[NTrgs][NLevel];
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
-    dirs[iTrg] = (TDirectory*) fOutput -> mkdir(sDir[iTrg].Data());
-    dirs[iTrg] -> cd();
-    for (UInt_t iCut = 0; iCut < NCut; iCut++) {
-      hPhiTrk[iTrg][iCut] -> Write();
-      hPhiRaw[iTrg][iCut] -> Write();
-      hEtaTrk[iTrg][iCut] -> Write();
-      hEtaRaw[iTrg][iCut] -> Write();
-      hPtTrk[iTrg][iCut]  -> Write();
-      hPtRaw[iTrg][iCut]  -> Write();
-    }
-    hPhiEff[iTrg] -> Write();
-    hEtaEff[iTrg] -> Write();
-    hPtEff[iTrg]  -> Write();
-  }
+    dTrgs[iTrg] = (TDirectory*) fOutput -> mkdir(sTrgDir[iTrg].Data());
+    dTrgs[iTrg] -> cd();
+    for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
+      dLvls[iTrg][iLevel] = (TDirectory*) dTrgs[iTrg] -> mkdir(sLevDir[iLevel].Data());
+      dLvls[iTrg][iLevel] -> cd();
+      for (UInt_t iCut = 0; iCut < NCut; iCut++) {
+        hPhiTrk[iLevel][iTrg][iCut] -> Write();
+        hEtaTrk[iLevel][iTrg][iCut] -> Write();
+        hPtTrk[iLevel][iTrg][iCut]  -> Write();
+      }  // end cut loop
+      hPhiForEff[iLevel][iTrg] -> Write();
+      hEtaForEff[iLevel][iTrg] -> Write();
+      hPtForEff[iLevel][iTrg]  -> Write();
+    }  // end level loop
+    dTrgs[iTrg]        -> cd();
+    hPhiRes[iTrg]      -> Write();
+    hPhiEff[iTrg]      -> Write();
+    hEtaRes[iTrg]      -> Write();
+    hEtaEff[iTrg]      -> Write();
+    hPtRes[iTrg]       -> Write();
+    hPtEff[iTrg]       -> Write();
+    hPtDiff[iTrg]      -> Write();
+    hPhiParVsDet[iTrg] -> Write();
+    hEtaParVsDet[iTrg] -> Write();
+    hPtParVsDet[iTrg]  -> Write();
+  }  // end trigger loop
+  fOutput -> cd();
   cout << "    Made directories." << endl;
 
 
@@ -1083,96 +1561,209 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   const TString sPads[NTrgs]    = {"pPi0", "pGamma"};
 
   TPad    *pPhiTrk[NTrgs];
+  TPad    *pPhiForEff[NTrgs];
   TPad    *pEtaTrk[NTrgs];
+  TPad    *pEtaForEff[NTrgs];
   TPad    *pPtTrk[NTrgs];
+  TPad    *pPtForEff[NTrgs];
+  TPad    *pPhiRes[NTrgs];
   TPad    *pPhiEff[NTrgs];
+  TPad    *pEtaRes[NTrgs];
   TPad    *pEtaEff[NTrgs];
+  TPad    *pPtRes[NTrgs];
   TPad    *pPtEff[NTrgs];
   TCanvas *cPhiTrk;
+  TCanvas *cPhiForEff;
   TCanvas *cEtaTrk;
+  TCanvas *cEtaForEff;
   TCanvas *cPtTrk;
+  TCanvas *cPtForEff;
+  TCanvas *cPhiRes;
   TCanvas *cPhiEff;
+  TCanvas *cEtaRes;
   TCanvas *cEtaEff;
+  TCanvas *cPtRes;
   TCanvas *cPtEff;
   fOutput -> cd();
   // phi plots
   cPhiTrk    = new TCanvas("cPhiTrk", "", width, height);
   pPhiTrk[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPhiTrk[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pPhiTrk[0]    -> SetGrid(grid, grid);
-  pPhiTrk[0]    -> SetTicks(ticks, ticks);
-  pPhiTrk[0]    -> SetRightMargin(margin);
-  pPhiTrk[1]    -> SetGrid(grid, grid);
-  pPhiTrk[1]    -> SetTicks(ticks, ticks);
-  pPhiTrk[1]    -> SetLeftMargin(margin);
-  cPhiTrk       -> cd();
-  pPhiTrk[0]    -> Draw();
-  pPhiTrk[1]    -> Draw();
-  pPhiTrk[0]    -> cd();
-  hPhiTrk[0][0] -> Draw();
-  hPhiTrk[0][1] -> Draw("same");
-  lPhi[0]       -> Draw();
-  pPhi[0]       -> Draw();
-  pPhiTrk[1]    -> cd();
-  hPhiTrk[1][0] -> Draw();
-  hPhiTrk[1][1] -> Draw("same");
-  lPhi[1]       -> Draw();
-  pPhi[1]       -> Draw();
-  cPhiTrk       -> Write();
-  cPhiTrk       -> Close();
+  pPhiTrk[0]       -> SetGrid(grid, grid);
+  pPhiTrk[0]       -> SetTicks(ticks, ticks);
+  pPhiTrk[0]       -> SetRightMargin(margin);
+  pPhiTrk[1]       -> SetGrid(grid, grid);
+  pPhiTrk[1]       -> SetTicks(ticks, ticks);
+  pPhiTrk[1]       -> SetLeftMargin(margin);
+  cPhiTrk          -> cd();
+  pPhiTrk[0]       -> Draw();
+  pPhiTrk[1]       -> Draw();
+  pPhiTrk[0]       -> cd();
+  hPhiTrk[1][0][0] -> Draw();
+  hPhiTrk[1][0][1] -> Draw("same");
+  lPhiR[0]         -> Draw();
+  pPhiR[0]         -> Draw();
+  pPhiTrk[1]       -> cd();
+  hPhiTrk[1][1][0] -> Draw();
+  hPhiTrk[1][1][1] -> Draw("same");
+  lPhiR[1]         -> Draw();
+  pPhiR[1]         -> Draw();
+  cPhiTrk          -> Write();
+  cPhiTrk          -> Close();
+
+  cPhiForEff    = new TCanvas("cPhiForEff", "", width, height);
+  pPhiForEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
+  pPhiForEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
+  pPhiForEff[0]    -> SetGrid(grid, grid);
+  pPhiForEff[0]    -> SetTicks(ticks, ticks);
+  pPhiForEff[0]    -> SetRightMargin(margin);
+  pPhiForEff[1]    -> SetGrid(grid, grid);
+  pPhiForEff[1]    -> SetTicks(ticks, ticks);
+  pPhiForEff[1]    -> SetLeftMargin(margin);
+  cPhiForEff       -> cd();
+  pPhiForEff[0]    -> Draw();
+  pPhiForEff[1]    -> Draw();
+  pPhiForEff[0]    -> cd();
+  hPhiForEff[0][0] -> Draw();
+  hPhiForEff[1][0] -> Draw("same");
+  lPhiE[0]         -> Draw();
+  pPhiE[0]         -> Draw();
+  pPhiForEff[1]    -> cd();
+  hPhiForEff[0][1] -> Draw();
+  hPhiForEff[1][1] -> Draw("same");
+  lPhiE[1]         -> Draw();
+  pPhiE[1]         -> Draw();
+  cPhiForEff       -> Write();
+  cPhiForEff       -> Close();
+
   // eta plots
   cEtaTrk    = new TCanvas("cEtaTrk", "", width, height);
   pEtaTrk[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pEtaTrk[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pEtaTrk[0]    -> SetGrid(grid, grid);
-  pEtaTrk[0]    -> SetTicks(ticks, ticks);
-  pEtaTrk[0]    -> SetRightMargin(margin);
-  pEtaTrk[1]    -> SetGrid(grid, grid);
-  pEtaTrk[1]    -> SetTicks(ticks, ticks);
-  pEtaTrk[1]    -> SetLeftMargin(margin);
-  cEtaTrk       -> cd();
-  pEtaTrk[0]    -> Draw();
-  pEtaTrk[1]    -> Draw();
-  pEtaTrk[0]    -> cd();
-  hEtaTrk[0][0] -> Draw();
-  hEtaTrk[0][1] -> Draw("same");
-  lEta[0]       -> Draw();
-  pEta[0]       -> Draw();
-  pEtaTrk[1]    -> cd();
-  hEtaTrk[1][0] -> Draw();
-  hEtaTrk[1][1] -> Draw("same");
-  lEta[1]       -> Draw();
-  pEta[1]       -> Draw();
-  cEtaTrk       -> Write();
-  cEtaTrk       -> Close();
+  pEtaTrk[0]       -> SetGrid(grid, grid);
+  pEtaTrk[0]       -> SetTicks(ticks, ticks);
+  pEtaTrk[0]       -> SetRightMargin(margin);
+  pEtaTrk[1]       -> SetGrid(grid, grid);
+  pEtaTrk[1]       -> SetTicks(ticks, ticks);
+  pEtaTrk[1]       -> SetLeftMargin(margin);
+  cEtaTrk          -> cd();
+  pEtaTrk[0]       -> Draw();
+  pEtaTrk[1]       -> Draw();
+  pEtaTrk[0]       -> cd();
+  hEtaTrk[1][0][0] -> Draw();
+  hEtaTrk[1][0][1] -> Draw("same");
+  lEtaR[0]         -> Draw();
+  pEtaR[0]         -> Draw();
+  pEtaTrk[1]       -> cd();
+  hEtaTrk[1][1][0] -> Draw();
+  hEtaTrk[1][1][1] -> Draw("same");
+  lEtaR[1]         -> Draw();
+  pEtaR[1]         -> Draw();
+  cEtaTrk          -> Write();
+  cEtaTrk          -> Close();
+
+  cEtaForEff    = new TCanvas("cEtaForEff", "", width, height);
+  pEtaForEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
+  pEtaForEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
+  pEtaForEff[0]    -> SetGrid(grid, grid);
+  pEtaForEff[0]    -> SetTicks(ticks, ticks);
+  pEtaForEff[0]    -> SetRightMargin(margin);
+  pEtaForEff[1]    -> SetGrid(grid, grid);
+  pEtaForEff[1]    -> SetTicks(ticks, ticks);
+  pEtaForEff[1]    -> SetLeftMargin(margin);
+  cEtaForEff       -> cd();
+  pEtaForEff[0]    -> Draw();
+  pEtaForEff[1]    -> Draw();
+  pEtaForEff[0]    -> cd();
+  hEtaForEff[0][0] -> Draw();
+  hEtaForEff[1][0] -> Draw("same");
+  lEtaE[0]         -> Draw();
+  pEtaE[0]         -> Draw();
+  pEtaForEff[1]    -> cd();
+  hEtaForEff[0][1] -> Draw();
+  hEtaForEff[1][1] -> Draw("same");
+  lEtaE[1]         -> Draw();
+  pEtaE[1]         -> Draw();
+  cEtaForEff       -> Write();
+  cEtaForEff       -> Close();
+
   // pT plots
   cPtTrk    = new TCanvas("cPtTrk", "", width, height);
   pPtTrk[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPtTrk[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pPtTrk[0]    -> SetGrid(grid, grid);
-  pPtTrk[0]    -> SetTicks(ticks, ticks);
-  pPtTrk[0]    -> SetRightMargin(margin);
-  pPtTrk[0]    -> SetLogy(log);
-  pPtTrk[1]    -> SetGrid(grid, grid);
-  pPtTrk[1]    -> SetTicks(ticks, ticks);
-  pPtTrk[1]    -> SetLeftMargin(margin);
-  pPtTrk[1]    -> SetLogy(log);
-  cPtTrk       -> cd();
-  pPtTrk[0]    -> Draw();
-  pPtTrk[1]    -> Draw();
-  pPtTrk[0]    -> cd();
-  hPtTrk[0][0] -> Draw();
-  hPtTrk[0][1] -> Draw("same");
-  lPt[0]       -> Draw();
-  pPt[0]       -> Draw();
-  pPtTrk[1]    -> cd();
-  hPtTrk[1][0] -> Draw();
-  hPtTrk[1][1] -> Draw("same");
-  lPt[1]       -> Draw();
-  pPt[1]       -> Draw();
-  cPtTrk       -> Write();
-  cPtTrk       -> Close();
+  pPtTrk[0]       -> SetGrid(grid, grid);
+  pPtTrk[0]       -> SetTicks(ticks, ticks);
+  pPtTrk[0]       -> SetRightMargin(margin);
+  pPtTrk[0]       -> SetLogy(log);
+  pPtTrk[1]       -> SetGrid(grid, grid);
+  pPtTrk[1]       -> SetTicks(ticks, ticks);
+  pPtTrk[1]       -> SetLeftMargin(margin);
+  pPtTrk[1]       -> SetLogy(log);
+  cPtTrk          -> cd();
+  pPtTrk[0]       -> Draw();
+  pPtTrk[1]       -> Draw();
+  pPtTrk[0]       -> cd();
+  hPtTrk[1][0][0] -> Draw();
+  hPtTrk[1][0][1] -> Draw("same");
+  lPtR[0]         -> Draw();
+  pPtR[0]         -> Draw();
+  pPtTrk[1]       -> cd();
+  hPtTrk[1][1][0] -> Draw();
+  hPtTrk[1][1][1] -> Draw("same");
+  lPtR[1]         -> Draw();
+  pPtR[1]         -> Draw();
+  cPtTrk          -> Write();
+  cPtTrk          -> Close();
+
+  cPtForEff    = new TCanvas("cPtForEff", "", width, height);
+  pPtForEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
+  pPtForEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
+  pPtForEff[0]    -> SetGrid(grid, grid);
+  pPtForEff[0]    -> SetTicks(ticks, ticks);
+  pPtForEff[0]    -> SetRightMargin(margin);
+  pPtForEff[0]    -> SetLogy(log);
+  pPtForEff[1]    -> SetGrid(grid, grid);
+  pPtForEff[1]    -> SetTicks(ticks, ticks);
+  pPtForEff[1]    -> SetLeftMargin(margin);
+  pPtForEff[1]    -> SetLogy(log);
+  cPtForEff       -> cd();
+  pPtForEff[0]    -> Draw();
+  pPtForEff[1]    -> Draw();
+  pPtForEff[0]    -> cd();
+  hPtForEff[0][0] -> Draw();
+  hPtForEff[1][0] -> Draw("same");
+  lPtE[0]         -> Draw();
+  pPtE[0]         -> Draw();
+  pPtForEff[1]    -> cd();
+  hPtForEff[0][1] -> Draw();
+  hPtForEff[1][1] -> Draw("same");
+  lPtE[1]         -> Draw();
+  pPtE[1]         -> Draw();
+  cPtForEff       -> Write();
+  cPtForEff       -> Close();
+
   // phi efficiency plots
+  cPhiRes    = new TCanvas("cPhiRes", "", width, height);
+  pPhiRes[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
+  pPhiRes[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
+  pPhiRes[0] -> SetGrid(grid, grid);
+  pPhiRes[0] -> SetTicks(ticks, ticks);
+  pPhiRes[0] -> SetRightMargin(margin);
+  pPhiRes[1] -> SetGrid(grid, grid);
+  pPhiRes[1] -> SetTicks(ticks, ticks);
+  pPhiRes[1] -> SetLeftMargin(margin);
+  cPhiRes    -> cd();
+  pPhiRes[0] -> Draw();
+  pPhiRes[1] -> Draw();
+  pPhiRes[0] -> cd();
+  hPhiRes[0] -> Draw();
+  pPhiR[0]   -> Draw();
+  pPhiRes[1] -> cd();
+  hPhiRes[1] -> Draw();
+  pPhiR[1]   -> Draw();
+  cPhiRes    -> Write();
+  cPhiRes    -> Close();
+
   cPhiEff    = new TCanvas("cPhiEff", "", width, height);
   pPhiEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPhiEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1187,13 +1778,35 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   pPhiEff[1] -> Draw();
   pPhiEff[0] -> cd();
   hPhiEff[0] -> Draw();
-  pPhi[0]    -> Draw();
+  pPhiE[0]   -> Draw();
   pPhiEff[1] -> cd();
   hPhiEff[1] -> Draw();
-  pPhi[1]    -> Draw();
+  pPhiE[1]   -> Draw();
   cPhiEff    -> Write();
   cPhiEff    -> Close();
+
   // eta efficiency plots
+  cEtaRes    = new TCanvas("cEtaRes", "", width, height);
+  pEtaRes[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
+  pEtaRes[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
+  pEtaRes[0] -> SetGrid(grid, grid);
+  pEtaRes[0] -> SetTicks(ticks, ticks);
+  pEtaRes[0] -> SetRightMargin(margin);
+  pEtaRes[1] -> SetGrid(grid, grid);
+  pEtaRes[1] -> SetTicks(ticks, ticks);
+  pEtaRes[1] -> SetLeftMargin(margin);
+  cEtaRes    -> cd();
+  pEtaRes[0] -> Draw();
+  pEtaRes[1] -> Draw();
+  pEtaRes[0] -> cd();
+  hEtaRes[0] -> Draw();
+  pEtaR[0]   -> Draw();
+  pEtaRes[1] -> cd();
+  hEtaRes[1] -> Draw();
+  pEtaR[1]   -> Draw();
+  cEtaRes    -> Write();
+  cEtaRes    -> Close();
+
   cEtaEff    = new TCanvas("cEtaEff", "", width, height);
   pEtaEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pEtaEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1208,13 +1821,35 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   pEtaEff[1] -> Draw();
   pEtaEff[0] -> cd();
   hEtaEff[0] -> Draw();
-  pEta[0]    -> Draw();
+  pEtaE[0]   -> Draw();
   pEtaEff[1] -> cd();
   hEtaEff[1] -> Draw();
-  pEta[1]    -> Draw();
+  pEtaE[1]   -> Draw();
   cEtaEff    -> Write();
   cEtaEff    -> Close();
+
   // pT efficiency plots
+  cPtRes    = new TCanvas("cPtRes", "", width, height);
+  pPtRes[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
+  pPtRes[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
+  pPtRes[0] -> SetGrid(grid, grid);
+  pPtRes[0] -> SetTicks(ticks, ticks);
+  pPtRes[0] -> SetRightMargin(margin);
+  pPtRes[1] -> SetGrid(grid, grid);
+  pPtRes[1] -> SetTicks(ticks, ticks);
+  pPtRes[1] -> SetLeftMargin(margin);
+  cPtRes    -> cd();
+  pPtRes[0] -> Draw();
+  pPtRes[1] -> Draw();
+  pPtRes[0] -> cd();
+  hPtRes[0] -> Draw();
+  pPtR[0]   -> Draw();
+  pPtRes[1] -> cd();
+  hPtRes[1] -> Draw();
+  pPtR[1]   -> Draw();
+  cPtRes    -> Write();
+  cPtRes    -> Close();
+
   cPtEff    = new TCanvas("cPtEff", "", width, height);
   pPtEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPtEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1229,10 +1864,10 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   pPtEff[1] -> Draw();
   pPtEff[0] -> cd();
   hPtEff[0] -> Draw();
-  pPt[0]    -> Draw();
+  pPtE[0]   -> Draw();
   pPtEff[1] -> cd();
   hPtEff[1] -> Draw();
-  pPt[1]    -> Draw();
+  pPtE[1]   -> Draw();
   cPtEff    -> Write();
   cPtEff    -> Close();
   cout << "    Drew plots." << endl;
@@ -1245,7 +1880,7 @@ vector<UInt_t> CalculateEmbeddingEfficiency(UInt_t &nTrgPi0, UInt_t &nTrgGam, co
   fInput  -> Close();
 
   cout << "  Calculation finished!\n" << endl;
-  return badIndices;
+  return;
 
 }
 
