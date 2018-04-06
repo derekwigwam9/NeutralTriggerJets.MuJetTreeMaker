@@ -481,17 +481,24 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   TH1D *hEtaEff[NTrgs];
   TH1D *hPtRes[NTrgs];
   TH1D *hPtEff[NTrgs];
+  // define resolution histograms
+  TH1D *hPhiDiff[NTrgs];
+  TH1D *hEtaDiff[NTrgs];
   TH1D *hPtDiff[NTrgs];
 
   // binning
   const UInt_t   nF     = 60;
   const UInt_t   nH     = 40;
-  const UInt_t   nPt    = 130;
-  const UInt_t   nDiff  = 44;
+  const UInt_t   nPt    = 260;
+  const UInt_t   nDf    = 240;
+  const UInt_t   nDh    = 400;
+  const UInt_t   nDpt   = 200;
   const Double_t f[2]   = {-3.15, 3.15};
   const Double_t h[2]   = {-1., 1.};
   const Double_t pT[2]  = {-1., 25.};
-  const Double_t dPt[2] = {-11., 11.};
+  const Double_t dF[2]  = {-12.56, 12.56};
+  const Double_t dH[2]  = {-10., 10.};
+  const Double_t dPt[2] = {-10., 10.};
   // create particle histograms
   hPhiTrk[0][0][0] = new TH1D("hPhiBeforeQA_piPar", "", nF, f[0], f[1]);
   hPhiTrk[0][1][0] = new TH1D("hPhiBeforeQA_gaPar", "", nF, f[0], f[1]);
@@ -550,8 +557,13 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   hPtRes[1]  = new TH1D("hPtResponse_ga", "", nPt, pT[0], pT[1]);
   hPtEff[0]  = new TH1D("hPtEfficiency_pi", "", nPt, pT[0], pT[1]);
   hPtEff[1]  = new TH1D("hPtEfficiency_ga", "", nPt, pT[0], pT[1]);
-  hPtDiff[0] = new TH1D("hPtDifference_pi", "", nDiff, dPt[0], dPt[1]);
-  hPtDiff[1] = new TH1D("hPtDifference_ga", "", nDiff, dPt[0], dPt[1]);
+  // create resolution histograms
+  hPhiDiff[0] = new TH1D("hPhiDifference_pi", "", nDf, dF[0], dF[1]);
+  hPhiDiff[1] = new TH1D("hPhiDifference_ga", "", nDf, dF[0], dF[1]);
+  hEtaDiff[0] = new TH1D("hEtaDifference_pi", "", nDh, dH[0], dH[1]);
+  hEtaDiff[1] = new TH1D("hEtaDifference_ga", "", nDh, dH[0], dH[1]);
+  hPtDiff[0]  = new TH1D("hPtDifference_pi", "", nDpt, dPt[0], dPt[1]);
+  hPtDiff[1]  = new TH1D("hPtDifference_ga", "", nDpt, dPt[0], dPt[1]);
   // errors
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
     hPhiRes[iTrg]      -> Sumw2();
@@ -560,6 +572,8 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     hEtaEff[iTrg]      -> Sumw2();
     hPtRes[iTrg]       -> Sumw2();
     hPtEff[iTrg]       -> Sumw2();
+    hPhiDiff[iTrg]     -> Sumw2();
+    hEtaDiff[iTrg]     -> Sumw2();
     hPtDiff[iTrg]      -> Sumw2();
     hPhiParVsDet[iTrg] -> Sumw2();
     hEtaParVsDet[iTrg] -> Sumw2();
@@ -847,21 +861,30 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
 
           // fill detector histograms
           if (matchesMC) {
+            const Double_t fDiff  = (fMC - fTrk) / fMC;
+            const Double_t hDiff  = (hMC - hTrk) / hMC;
+            const Double_t pTdiff = (pTmc - pTtrk) / pTmc;
             if (isPi0) {
               hPhiTrk[1][0][1] -> Fill(fTrk);
               hPhiForEff[1][0] -> Fill(fMC);
+              hPhiDiff[0]      -> Fill(fDiff);
               hEtaTrk[1][0][1] -> Fill(hTrk);
               hEtaForEff[1][0] -> Fill(hMC);
+              hEtaDiff[0]      -> Fill(hDiff);
               hPtTrk[1][0][1]  -> Fill(pTtrk);
               hPtForEff[1][0]  -> Fill(pTmc);
+              hPtDiff[0]       -> Fill(pTdiff);
             }
             if (isGam) {
               hPhiTrk[1][1][1] -> Fill(fTrk);
               hPhiForEff[1][1] -> Fill(fMC);
+              hPhiDiff[1]      -> Fill(fDiff);
               hEtaTrk[1][1][1] -> Fill(hTrk);
               hEtaForEff[1][1] -> Fill(hMC);
+              hEtaDiff[1]      -> Fill(hDiff);
               hPtTrk[1][1][1]  -> Fill(pTtrk);
               hPtForEff[1][1]  -> Fill(pTmc);
+              hPtDiff[1]       -> Fill(pTdiff);
             }
           }
         }  // end detector track loop
@@ -1541,6 +1564,8 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     hEtaEff[iTrg]      -> Write();
     hPtRes[iTrg]       -> Write();
     hPtEff[iTrg]       -> Write();
+    hPhiDiff[iTrg]     -> Write();
+    hEtaDiff[iTrg]     -> Write();
     hPtDiff[iTrg]      -> Write();
     hPhiParVsDet[iTrg] -> Write();
     hEtaParVsDet[iTrg] -> Write();
