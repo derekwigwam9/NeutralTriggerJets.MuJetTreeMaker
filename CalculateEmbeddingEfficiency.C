@@ -48,7 +48,8 @@ static const UInt_t  NVal(2);
 static const TString sTreePar("McTracks");
 static const TString sTreeDet("GfmtoDst_mu");
 static const TString sInputDefault("../../MuDstMatching/output/merged/pt9.matchWithMc.root");
-static const TString sOutputDefault("pp200r9pt9.effWithDca1andIdVx0.d12m3y2018.root");
+//static const TString sOutputDefault("pp200r9pt9.effWithDca1andIdVx0.d12m3y2018.root");
+static const TString sOutputDefault("test.root");
 
 
 
@@ -485,6 +486,9 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   TH1D *hPhiDiff[NTrgs];
   TH1D *hEtaDiff[NTrgs];
   TH1D *hPtDiff[NTrgs];
+  TH2D *hPtDiffVsPt[NTrgs];
+
+  const Double_t pTbins[35] = {0., 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1.2, 1.4, 1.6, 1.8, 2., 2.5, 3., 3.5, 4., 5., 6., 7., 8., 10., 12., 14., 16., 18., 20.};
 
   // binning
   const UInt_t   nF     = 60;
@@ -508,10 +512,14 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   hEtaTrk[0][1][0] = new TH1D("hEtaBeforeQA_gaPar", "", nH, h[0], h[1]);
   hEtaTrk[0][0][1] = new TH1D("hEtaAfterQA_piPar", "", nH, h[0], h[1]);
   hEtaTrk[0][1][1] = new TH1D("hEtaAfterQA_gaPar", "", nH, h[0], h[1]);
-  hPtTrk[0][0][0]  = new TH1D("hPtBeforeQA_piPar", "", nPt, pT[0], pT[1]);
-  hPtTrk[0][1][0]  = new TH1D("hPtBeforeQA_gaPar", "", nPt, pT[0], pT[1]);
-  hPtTrk[0][0][1]  = new TH1D("hPtAfterQA_piPar", "", nPt, pT[0], pT[1]);
-  hPtTrk[0][1][1]  = new TH1D("hPtAfterQA_gaPar", "", nPt, pT[0], pT[1]);
+  //hPtTrk[0][0][0]  = new TH1D("hPtBeforeQA_piPar", "", nPt, pT[0], pT[1]);
+  //hPtTrk[0][1][0]  = new TH1D("hPtBeforeQA_gaPar", "", nPt, pT[0], pT[1]);
+  //hPtTrk[0][0][1]  = new TH1D("hPtAfterQA_piPar", "", nPt, pT[0], pT[1]);
+  //hPtTrk[0][1][1]  = new TH1D("hPtAfterQA_gaPar", "", nPt, pT[0], pT[1]);
+  hPtTrk[0][0][0]  = new TH1D("hPtBeforeQA_piPar", "", 34, pTbins);
+  hPtTrk[0][1][0]  = new TH1D("hPtBeforeQA_gaPar", "", 34, pTbins);
+  hPtTrk[0][0][1]  = new TH1D("hPtAfterQA_piPar", "", 34, pTbins);
+  hPtTrk[0][1][1]  = new TH1D("hPtAfterQA_gaPar", "", 34, pTbins);
   // create detector histograms
   hPhiTrk[1][0][0] = new TH1D("hPhiBeforeQA_piDet", "", nF, f[0], f[1]);
   hPhiTrk[1][1][0] = new TH1D("hPhiBeforeQA_gaDet", "", nF, f[0], f[1]);
@@ -521,10 +529,14 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   hEtaTrk[1][1][0] = new TH1D("hEtaBeforeQA_gaDet", "", nH, h[0], h[1]);
   hEtaTrk[1][0][1] = new TH1D("hEtaAfterQA_piDet", "", nH, h[0], h[1]);
   hEtaTrk[1][1][1] = new TH1D("hEtaAfterQA_gaDet", "", nH, h[0], h[1]);
-  hPtTrk[1][0][0]  = new TH1D("hPtBeforeQA_piDet", "", nPt, pT[0], pT[1]);
-  hPtTrk[1][1][0]  = new TH1D("hPtBeforeQA_gaDet", "", nPt, pT[0], pT[1]);
-  hPtTrk[1][0][1]  = new TH1D("hPtAfterQA_piDet", "", nPt, pT[0], pT[1]);
-  hPtTrk[1][1][1]  = new TH1D("hPtAfterQA_gaDet", "", nPt, pT[0], pT[1]);
+  //hPtTrk[1][0][0]  = new TH1D("hPtBeforeQA_piDet", "", nPt, pT[0], pT[1]);
+  //hPtTrk[1][1][0]  = new TH1D("hPtBeforeQA_gaDet", "", nPt, pT[0], pT[1]);
+  //hPtTrk[1][0][1]  = new TH1D("hPtAfterQA_piDet", "", nPt, pT[0], pT[1]);
+  //hPtTrk[1][1][1]  = new TH1D("hPtAfterQA_gaDet", "", nPt, pT[0], pT[1]);
+  hPtTrk[1][0][0]  = new TH1D("hPtBeforeQA_piDet", "", 34, pTbins);
+  hPtTrk[1][1][0]  = new TH1D("hPtBeforeQA_gaDet", "", 34, pTbins);
+  hPtTrk[1][0][1]  = new TH1D("hPtAfterQA_piDet", "", 34, pTbins);
+  hPtTrk[1][1][1]  = new TH1D("hPtAfterQA_gaDet", "", 34, pTbins);
   // matching histograms
   hPhiForEff[0][0] = new TH1D("hPhiForEff_piPar", "", nF, f[0], f[1]);
   hPhiForEff[0][1] = new TH1D("hPhiForEff_gaPar", "", nF, f[0], f[1]);
@@ -534,16 +546,22 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   hEtaForEff[0][1] = new TH1D("hEtaForEff_gaPar", "", nH, h[0], h[1]);
   hEtaForEff[1][0] = new TH1D("hEtaForEff_piDet", "", nH, h[0], h[1]);
   hEtaForEff[1][1] = new TH1D("hEtaForEff_gaDet", "", nH, h[0], h[1]);
-  hPtForEff[0][0]  = new TH1D("hPtForEff_piPar", "", nPt, pT[0], pT[1]);
-  hPtForEff[0][1]  = new TH1D("hPtForEff_gaPar", "", nPt, pT[0], pT[1]);
-  hPtForEff[1][0]  = new TH1D("hPtForEff_piDet", "", nPt, pT[0], pT[1]);
-  hPtForEff[1][1]  = new TH1D("hPtForEff_gaDet", "", nPt, pT[0], pT[1]);
+  //hPtForEff[0][0]  = new TH1D("hPtForEff_piPar", "", nPt, pT[0], pT[1]);
+  //hPtForEff[0][1]  = new TH1D("hPtForEff_gaPar", "", nPt, pT[0], pT[1]);
+  //hPtForEff[1][0]  = new TH1D("hPtForEff_piDet", "", nPt, pT[0], pT[1]);
+  //hPtForEff[1][1]  = new TH1D("hPtForEff_gaDet", "", nPt, pT[0], pT[1]);
+  hPtForEff[0][0]  = new TH1D("hPtForEff_piPar", "", 34, pTbins);
+  hPtForEff[0][1]  = new TH1D("hPtForEff_gaPar", "", 34, pTbins);
+  hPtForEff[1][0]  = new TH1D("hPtForEff_piDet", "", 34, pTbins);
+  hPtForEff[1][1]  = new TH1D("hPtForEff_gaDet", "", 34, pTbins);
   hPhiParVsDet[0]  = new TH2D("hPhiParVsDet_pi", "", nF, f[0], f[1], nF, f[0], f[1]);
   hPhiParVsDet[1]  = new TH2D("hPhiParVsDet_ga", "", nF, f[0], f[1], nF, f[0], f[1]);
   hEtaParVsDet[0]  = new TH2D("hEtaParVsDet_pi", "", nH, h[0], h[1], nH, h[0], h[1]);
   hEtaParVsDet[1]  = new TH2D("hEtaParVsDet_ga", "", nH, h[0], h[1], nH, h[0], h[1]);
-  hPtParVsDet[0]   = new TH2D("hPtParVsDet_pi", "", nPt, pT[0], pT[1], nPt, pT[0], pT[1]);
-  hPtParVsDet[1]   = new TH2D("hPtParVsDet_ga", "", nPt, pT[0], pT[1], nPt, pT[0], pT[1]);
+  //hPtParVsDet[0]   = new TH2D("hPtParVsDet_pi", "", nPt, pT[0], pT[1], nPt, pT[0], pT[1]);
+  //hPtParVsDet[1]   = new TH2D("hPtParVsDet_ga", "", nPt, pT[0], pT[1], nPt, pT[0], pT[1]);
+  hPtParVsDet[0]   = new TH2D("hPtParVsDet_pi", "", 34, pTbins, 34, pTbins);
+  hPtParVsDet[1]   = new TH2D("hPtParVsDet_ga", "", 34, pTbins, 34, pTbins);
   // create efficiency histograms
   hPhiRes[0] = new TH1D("hPhiResponse_pi", "", nF, f[0], f[1]);
   hPhiRes[1] = new TH1D("hPhiResponse_ga", "", nF, f[0], f[1]);
@@ -553,10 +571,14 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   hEtaRes[1] = new TH1D("hEtaResponse_ga", "", nH, h[0], h[1]);
   hEtaEff[0] = new TH1D("hEtaEfficiency_pi", "", nH, h[0], h[1]);
   hEtaEff[1] = new TH1D("hEtaEfficiency_ga", "", nH, h[0], h[1]);
-  hPtRes[0]  = new TH1D("hPtResponse_pi", "", nPt, pT[0], pT[1]);
-  hPtRes[1]  = new TH1D("hPtResponse_ga", "", nPt, pT[0], pT[1]);
-  hPtEff[0]  = new TH1D("hPtEfficiency_pi", "", nPt, pT[0], pT[1]);
-  hPtEff[1]  = new TH1D("hPtEfficiency_ga", "", nPt, pT[0], pT[1]);
+  //hPtRes[0]  = new TH1D("hPtResponse_pi", "", nPt, pT[0], pT[1]);
+  //hPtRes[1]  = new TH1D("hPtResponse_ga", "", nPt, pT[0], pT[1]);
+  //hPtEff[0]  = new TH1D("hPtEfficiency_pi", "", nPt, pT[0], pT[1]);
+  //hPtEff[1]  = new TH1D("hPtEfficiency_ga", "", nPt, pT[0], pT[1]);
+  hPtRes[0]  = new TH1D("hPtResponse_pi", "", 34, pTbins);
+  hPtRes[1]  = new TH1D("hPtResponse_ga", "", 34, pTbins);
+  hPtEff[0]  = new TH1D("hPtEfficiency_pi", "", 34, pTbins);
+  hPtEff[1]  = new TH1D("hPtEfficiency_ga", "", 34, pTbins);
   // create resolution histograms
   hPhiDiff[0] = new TH1D("hPhiDifference_pi", "", nDf, dF[0], dF[1]);
   hPhiDiff[1] = new TH1D("hPhiDifference_ga", "", nDf, dF[0], dF[1]);

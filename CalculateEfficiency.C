@@ -34,7 +34,8 @@ using namespace std;
 
 // global constants
 static const UInt_t NEmbed(10);
-static const UInt_t NFiles(10);
+//static const UInt_t NFiles(10);
+static const UInt_t NFiles(1);
 static const UInt_t NLevel(2);
 static const UInt_t NHist(3);
 static const UInt_t NCut(2);
@@ -52,15 +53,16 @@ void CalculateEfficiency() {
 
   // io parameters
   const UInt_t  maker(1);
-  const TString sOutput("pp200r9embed.efficiency.allPtPartonBins.d13m3y2018.root");
-  const TString sInput[NFiles] = {"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root", "../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
+  //const TString sOutput("pp200r9embed.efficiency.tinyBins.d31m3y2018.root");
+  const TString sOutput("test2.root");
+  const TString sInput[NFiles] = {/*"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root",*/ "../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
 
   // parameters for individual files
-  const TString sDate("d13m3y2018");
+  const TString sDate("d6m4y2018");
   const TString sSystem("pp200r9");
-  const TString sOutLabel("binEfficiency");
+  const TString sOutLabel("binEfficiency.TEST");
   const TString sTree[NLevel]     = {"McTracks", "GfmtoDst_mu"};
-  const TString sBinLabel[NFiles] = {"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25", "pt35"};
+  const TString sBinLabel[NFiles] = {/*"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25",*/ "pt35"};
 
   // other parameters
   const Bool_t   batch(false);
@@ -155,14 +157,29 @@ void CalculateEfficiency() {
 
   // grab histograms
   const TString sBase[NHist] = {"hPhiForEff_pi", "hEtaForEff_pi", "hPtForEff_pi"};
+  const TString sRes[NHist]  = {"pi0/hPhiDifference_pi", "pi0/hEtaDifference_pi", "pi0/hPtDifference_pi"};
   const TString sDir[NLevel] = {"pi0/particle/", "pi0/detector/"};
   const TString sLvl[NLevel] = {"Par", "Det"};
 
   TH1D    *hPhi[NFiles][NLevel];
+  TH1D    *hPhiRes[NFiles];
   TH1D    *hEta[NFiles][NLevel];
+  TH1D    *hEtaRes[NFiles];
   TH1D    *hPt[NFiles][NLevel];
+  TH1D    *hPtRes[NFiles];
   TString sHistName[NHist];
   for (UInt_t iFile = 0; iFile < NFiles; iFile++) {
+    // get resolution histograms
+    hPhiRes[iFile] = (TH1D*) fInput[iFile] -> Get(sRes[0].Data());
+    hEtaRes[iFile] = (TH1D*) fInput[iFile] -> Get(sRes[1].Data());
+    hPtRes[iFile]  = (TH1D*) fInput[iFile] -> Get(sRes[2].Data());
+    if (!hPhiRes[iFile] || !hEtaRes[iFile] || !hPtRes[iFile]) {
+      cerr << "PANIC: couldn't grab resolution histogram!\n"
+           << "       check file " << iFile << "..."
+           << endl;
+      err = 3;
+      break;
+    }
     for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
       // make name
       sHistName[0] = sDir[iLevel];
@@ -195,6 +212,15 @@ void CalculateEfficiency() {
     cout << "    Grabbed histograms." << endl;
 
 
+  Double_t pTbins[35];
+  Double_t nPtBin = hPt[0][0] -> GetNbinsX();
+  Double_t pTmax  = hPt[0][0] -> GetBinLowEdge(nPtBin + 1);
+  hPt[0][0]  -> GetLowEdge(pTbins);
+  pTbins[34] = pTmax;
+  cout << "DOUBLE CHECK: pT[0] = " << pTbins[0] << ", pT[34] = " << pTbins[34]
+       << endl;
+
+
   // sum histograms
   const UInt_t  nF = hPhi[0][0] -> GetNbinsX();
   const UInt_t  nH = hEta[0][0] -> GetNbinsX();
@@ -205,15 +231,14 @@ void CalculateEfficiency() {
   const Float_t h2 = hEta[0][0] -> GetBinLowEdge(nH + 1);
   const Float_t p1 = hPt[0][0]  -> GetBinLowEdge(1);
   const Float_t p2 = hPt[0][0]  -> GetBinLowEdge(nP + 1);
-  cout << "DOUBLE CHECK: nP = " << nP << ", p1 = " << p1 << ", p2 = " << p2 <<"\n"
-       << "  [particle] nP = " << hPt[0][0] -> GetNbinsX() << ", p1 = " << hPt[0][0] -> GetBinLowEdge(1) << ", p2 = " << hPt[0][0] -> GetBinLowEdge(nP + 1) << "\n"
-       << "  [detector] nP = " << hPt[0][1] -> GetNbinsX() << ", p1 = " << hPt[0][1] -> GetBinLowEdge(1) << ", p2 = " << hPt[0][1] -> GetBinLowEdge(nP + 1)
-       << endl;
 
+  // names
   const TString sSumBase[NHist] = {"hPhiSum", "hEtaSum", "hPtSum"};
+  const TString sResBase[NHist] = {"hPhiRes", "hEtaRes", "hPtRes"};
   const TString sSumLvl[NLevel] = {"_par", "_det"};
 
   TH1D    *hSum[NHist][NLevel];
+  TH1D    *hRes[NHist];
   TString sSumName[NHist];
   for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
     // make names
@@ -226,7 +251,8 @@ void CalculateEfficiency() {
     // declare histograms
     hSum[0][iLevel] = new TH1D(sSumName[0].Data(), "", nF, f1, f2);
     hSum[1][iLevel] = new TH1D(sSumName[1].Data(), "", nH, h1, h2);
-    hSum[2][iLevel] = new TH1D(sSumName[2].Data(), "", nP, p1, p2);
+    //hSum[2][iLevel] = new TH1D(sSumName[2].Data(), "", nP, p1, p2);
+    hSum[2][iLevel] = new TH1D(sSumName[2].Data(), "", 34, pTbins);
     hSum[0][iLevel] -> Sumw2();
     hSum[1][iLevel] -> Sumw2();
     hSum[2][iLevel] -> Sumw2();
@@ -244,8 +270,18 @@ void CalculateEfficiency() {
   // normalize histograms
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
     for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
+      const UInt_t   bins = hSum[iHist][iLevel];
       const Double_t norm = nTrgTot[0];
       hSum[iHist][iLevel] -> Scale(1. / norm);
+      for (UInt_t iBin = 1; iBin <= bins; iBin++) {
+        const Double_t width = hSum[iHist][iLevel] -> GetBinWidth(iBin);
+        const Double_t value = hSum[iHist][iLevel] -> GetBinContent(iBin);
+        const Double_t error = hSum[iHist][iLevel] -> GetBinError(iBin);
+        const Double_t newV  = value / width;
+        const Double_t newE  = error / width;
+        hSum[iHist][iLevel] -> SetBinContent(iBin, newV);
+        hSum[iHist][iLevel] -> SetBinError(iBin, newE);
+      }
     }  // end level loop
   }  // end hist loop
   cout << "    Normalized histograms." << endl;
@@ -260,7 +296,10 @@ void CalculateEfficiency() {
   TH1D    *hEff[NHist];
   Float_t weight(1.);
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
-    hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", nBins[iHist], bin1[iHist], bin2[iHist]);
+    if (iHist == 2)
+      hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", 34, pTbins);
+    else
+      hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", nBins[iHist], bin1[iHist], bin2[iHist]);
     hEff[iHist] -> Sumw2();
     hEff[iHist] -> Divide(hSum[iHist][1], hSum[iHist][0], weight, weight);
   }
