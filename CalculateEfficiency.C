@@ -20,10 +20,12 @@
 
 #include <vector>
 #include <cassert>
+#include <iostream>
 #include "TH1.h"
 #include "TPad.h"
 #include "TROOT.h"
 #include "TFile.h"
+#include "TError.h"
 #include "TSystem.h"
 #include "TString.h"
 #include "TCanvas.h"
@@ -33,9 +35,11 @@ using namespace std;
 
 
 // global constants
+static const UInt_t NPhiBins(61);
+static const UInt_t NEtaBins(41);
+static const UInt_t NPtBins(35);
 static const UInt_t NEmbed(10);
-//static const UInt_t NFiles(10);
-static const UInt_t NFiles(1);
+static const UInt_t NFiles(10);
 static const UInt_t NLevel(2);
 static const UInt_t NHist(3);
 static const UInt_t NCut(2);
@@ -53,16 +57,15 @@ void CalculateEfficiency() {
 
   // io parameters
   const UInt_t  maker(1);
-  //const TString sOutput("pp200r9embed.efficiency.tinyBins.d31m3y2018.root");
-  const TString sOutput("test2.root");
-  const TString sInput[NFiles] = {/*"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root",*/ "../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
+  const TString sOutput("pp200r9embed.efficiency.variableBins.d10m4y2018.root");
+  const TString sInput[NFiles] = {"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root", "../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
 
   // parameters for individual files
-  const TString sDate("d6m4y2018");
+  const TString sDate("d10m4y2018");
   const TString sSystem("pp200r9");
-  const TString sOutLabel("binEfficiency.TEST");
+  const TString sOutLabel("binEfficiency.variableSize");
   const TString sTree[NLevel]     = {"McTracks", "GfmtoDst_mu"};
-  const TString sBinLabel[NFiles] = {/*"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25",*/ "pt35"};
+  const TString sBinLabel[NFiles] = {"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25", "pt35"};
 
   // other parameters
   const Bool_t   batch(false);
@@ -212,31 +215,31 @@ void CalculateEfficiency() {
     cout << "    Grabbed histograms." << endl;
 
 
-  Double_t pTbins[35];
-  Double_t nPtBin = hPt[0][0] -> GetNbinsX();
-  Double_t pTmax  = hPt[0][0] -> GetBinLowEdge(nPtBin + 1);
+  // for binning
+  Double_t phiBins[NPhiBins];
+  Double_t etaBins[NEtaBins];
+  Double_t pTbins[NPtBins];
+
+  // get bin edges
+  const Double_t nPhiHistBins = hPhi[0][0] -> GetNbinsX();
+  const Double_t nEtaHistBins = hEta[0][0] -> GetNbinsX();;
+  const Double_t nPtHistBins  = hPt[0][0]  -> GetNbinsX();
+  const Double_t phiMaxEdge   = hPhi[0][0] -> GetBinLowEdge(NPhiBins);
+  const Double_t etaMaxEdge   = hEta[0][0] -> GetBinLowEdge(NEtaBins);
+  const Double_t pTmaxEdge    = hPt[0][0]  -> GetBinLowEdge(NPtBins);
+  hPhi[0][0] -> GetLowEdge(phiBins);
+  hEta[0][0] -> GetLowEdge(etaBins);
   hPt[0][0]  -> GetLowEdge(pTbins);
-  pTbins[34] = pTmax;
-  cout << "DOUBLE CHECK: pT[0] = " << pTbins[0] << ", pT[34] = " << pTbins[34]
-       << endl;
-
-
-  // sum histograms
-  const UInt_t  nF = hPhi[0][0] -> GetNbinsX();
-  const UInt_t  nH = hEta[0][0] -> GetNbinsX();
-  const UInt_t  nP = hPt[0][0]  -> GetNbinsX();
-  const Float_t f1 = hPhi[0][0] -> GetBinLowEdge(1);
-  const Float_t f2 = hPhi[0][0] -> GetBinLowEdge(nF + 1);
-  const Float_t h1 = hEta[0][0] -> GetBinLowEdge(1);
-  const Float_t h2 = hEta[0][0] -> GetBinLowEdge(nH + 1);
-  const Float_t p1 = hPt[0][0]  -> GetBinLowEdge(1);
-  const Float_t p2 = hPt[0][0]  -> GetBinLowEdge(nP + 1);
+  phiBins[nPhiHistBins] = phiMaxEdge;
+  etaBins[nEtaHistBins] = etaMaxEdge;
+  pTbins[nPtHistBins]   = pTmaxEdge;
 
   // names
   const TString sSumBase[NHist] = {"hPhiSum", "hEtaSum", "hPtSum"};
   const TString sResBase[NHist] = {"hPhiRes", "hEtaRes", "hPtRes"};
   const TString sSumLvl[NLevel] = {"_par", "_det"};
 
+  // sum histograms
   TH1D    *hSum[NHist][NLevel];
   TH1D    *hRes[NHist];
   TString sSumName[NHist];
@@ -249,10 +252,9 @@ void CalculateEfficiency() {
     sSumName[1].Append(sSumLvl[iLevel].Data());
     sSumName[2].Append(sSumLvl[iLevel].Data());
     // declare histograms
-    hSum[0][iLevel] = new TH1D(sSumName[0].Data(), "", nF, f1, f2);
-    hSum[1][iLevel] = new TH1D(sSumName[1].Data(), "", nH, h1, h2);
-    //hSum[2][iLevel] = new TH1D(sSumName[2].Data(), "", nP, p1, p2);
-    hSum[2][iLevel] = new TH1D(sSumName[2].Data(), "", 34, pTbins);
+    hSum[0][iLevel] = new TH1D(sSumName[0].Data(), "", nPhiHistBins, phiBins);
+    hSum[1][iLevel] = new TH1D(sSumName[1].Data(), "", nEtaHistBins, etaBins);
+    hSum[2][iLevel] = new TH1D(sSumName[2].Data(), "", nPtHistBins, pTbins);
     hSum[0][iLevel] -> Sumw2();
     hSum[1][iLevel] -> Sumw2();
     hSum[2][iLevel] -> Sumw2();
@@ -270,15 +272,15 @@ void CalculateEfficiency() {
   // normalize histograms
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
     for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
-      const UInt_t   bins = hSum[iHist][iLevel];
+      const UInt_t   bins = hSum[iHist][iLevel] -> GetNbinsX();
       const Double_t norm = nTrgTot[0];
       hSum[iHist][iLevel] -> Scale(1. / norm);
       for (UInt_t iBin = 1; iBin <= bins; iBin++) {
-        const Double_t width = hSum[iHist][iLevel] -> GetBinWidth(iBin);
+        const Double_t binW  = hSum[iHist][iLevel] -> GetBinWidth(iBin);
         const Double_t value = hSum[iHist][iLevel] -> GetBinContent(iBin);
         const Double_t error = hSum[iHist][iLevel] -> GetBinError(iBin);
-        const Double_t newV  = value / width;
-        const Double_t newE  = error / width;
+        const Double_t newV  = value / binW;
+        const Double_t newE  = error / binW;
         hSum[iHist][iLevel] -> SetBinContent(iBin, newV);
         hSum[iHist][iLevel] -> SetBinError(iBin, newE);
       }
@@ -288,18 +290,22 @@ void CalculateEfficiency() {
 
 
   // calculate efficiencies
-  const UInt_t  nBins[NHist]    = {nF, nH, nP};
-  const Float_t bin1[NHist]     = {f1, h1, p1};
-  const Float_t bin2[NHist]     = {f2, h2, p2};
   const TString sEffName[NHist] = {"hPhiEfficiency", "hEtaEfficiency", "hPtEfficiency"};
 
   TH1D    *hEff[NHist];
   Float_t weight(1.);
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
-    if (iHist == 2)
-      hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", 34, pTbins);
-    else
-      hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", nBins[iHist], bin1[iHist], bin2[iHist]);
+    switch (iHist) {
+      case 0:
+        hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", nPhiHistBins, phiBins);
+        break;
+      case 1:
+        hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", nEtaHistBins, etaBins);
+        break;
+      case 2:
+        hEff[iHist] = new TH1D(sEffName[iHist].Data(), "", nPtHistBins, pTbins);
+        break;
+    }
     hEff[iHist] -> Sumw2();
     hEff[iHist] -> Divide(hSum[iHist][1], hSum[iHist][0], weight, weight);
   }
@@ -316,7 +322,7 @@ void CalculateEfficiency() {
   const TString  sForm[NHist] = {"[0]", "[0]", "[0]*(1-exp(-1.*[1]*x))"};
   const Double_t guess[NHist] = {0.5, 0.5, 0.87};
   const Double_t sigGuess(4.0);
-  const Double_t fFitRange[2] = {f1, f2};
+  const Double_t fFitRange[2] = {-3.15, 3.15};
   const Double_t hFitRange[2] = {-0.7, 0.7};
   const Double_t pFitRange[2] = {1., 7.};
   const Double_t start[NHist] = {fFitRange[0], hFitRange[0], pFitRange[0]};
@@ -332,7 +338,7 @@ void CalculateEfficiency() {
     sFuncName += sFunc.Data();
 
     // define fits
-    fFit[iHist] = new TF1(sFuncName.Data(), sForm[iHist].Data(), bin1[iHist], bin2[iHist]);
+    fFit[iHist] = new TF1(sFuncName.Data(), sForm[iHist].Data(), start[iHist], stop[iHist]);
     fFit[iHist] -> SetLineColor(fColF);
     fFit[iHist] -> SetLineStyle(fLinF);
     fFit[iHist] -> SetLineWidth(fSizF);
