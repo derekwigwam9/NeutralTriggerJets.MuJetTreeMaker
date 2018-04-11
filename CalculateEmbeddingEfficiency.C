@@ -6,12 +6,6 @@
 // efficiency using output from the
 // 'StJetTreeMcMaker'.  Called by
 // 'CalculateEfficiency.C'.
-//
-// NOTE: in data, what I mean by
-//       'efficiency' is the no.
-//       of tracks before QA cuts
-//       to the no. of tracks after
-//       QA cuts.
 
 
 #include <map>
@@ -29,6 +23,7 @@
 #include "TString.h"
 #include "TLegend.h"
 #include "TCanvas.h"
+#include "TProfile.h"
 #include "TPaveText.h"
 #include "TDirectory.h"
 
@@ -50,8 +45,8 @@ static const UInt_t  NCut(2);
 static const UInt_t  NVal(2);
 static const TString sTreePar("McTracks");
 static const TString sTreeDet("GfmtoDst_mu");
-static const TString sInputDefault("../../MuDstMatching/output/merged/pt9.matchWithMc.root");
-static const TString sOutputDefault("pp200r9pt9.effWithDca1andIdVx0.d12m3y2018.root");
+static const TString sInputDefault("../../MuDstMatching/output/merged/pt35.matchWithMc.root");
+static const TString sOutputDefault("pp200r9pt35.default.root");
 
 
 
@@ -478,31 +473,32 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   TH2D *hEtaParVsDet[NTrgs];
   TH2D *hPtParVsDet[NTrgs];
   // define efficiency histograms
-  TH1D *hPhiRes[NTrgs];
   TH1D *hPhiEff[NTrgs];
-  TH1D *hEtaRes[NTrgs];
   TH1D *hEtaEff[NTrgs];
-  TH1D *hPtRes[NTrgs];
   TH1D *hPtEff[NTrgs];
   // define resolution histograms
-  TH1D *hPhiDiff[NTrgs];
-  TH1D *hEtaDiff[NTrgs];
-  TH1D *hPtDiff[NTrgs];
-  TH2D *hPtDiffVsPt[NTrgs];
+  TH1D *hPhiRes[NTrgs];
+  TH1D *hEtaRes[NTrgs];
+  TH1D *hPtRes[NTrgs];
+  TH2D *hPhiResVsPhi[NTrgs];
+  TH2D *hEtaResVsEta[NTrgs];
+  TH2D *hPtResVsPt[NTrgs];
 
   // pT binning
   const UInt_t   nPtHistBins         = NPtBins - 1;
   const Double_t pTbinEdges[NPtBins] = {0., 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1.2, 1.4, 1.6, 1.8, 2., 2.5, 3., 3.5, 4., 5., 6., 7., 8., 10., 12., 14., 16., 18., 20.};
 
   // binning
-  const UInt_t   nDf    = 240;
-  const UInt_t   nDh    = 400;
-  const UInt_t   nDpt   = 200;
-  const Double_t f[2]   = {-3.15, 3.15};
-  const Double_t h[2]   = {-1., 1.};
-  const Double_t dF[2]  = {-12.56, 12.56};
-  const Double_t dH[2]  = {-10., 10.};
-  const Double_t dPt[2] = {-10., 10.};
+  const UInt_t   nDf     = 240;
+  const UInt_t   nDh     = 400;
+  const UInt_t   nDpt    = 200;
+  const UInt_t   nPt2d   = 220;
+  const Double_t f[2]    = {-3.15, 3.15};
+  const Double_t h[2]    = {-1., 1.};
+  const Double_t dF[2]   = {-12.56, 12.56};
+  const Double_t dH[2]   = {-10., 10.};
+  const Double_t dPt[2]  = {-10., 10.};
+  const Double_t pT2d[2] = {-1., 21.};
   // create particle histograms
   hPhiTrk[0][0][0] = new TH1D("hPhiBeforeQA_piPar", "", NPhiBins, f[0], f[1]);
   hPhiTrk[0][1][0] = new TH1D("hPhiBeforeQA_gaPar", "", NPhiBins, f[0], f[1]);
@@ -549,39 +545,39 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   hPtParVsDet[0]   = new TH2D("hPtParVsDet_pi", "", nPtHistBins, pTbinEdges, nPtHistBins, pTbinEdges);
   hPtParVsDet[1]   = new TH2D("hPtParVsDet_ga", "", nPtHistBins, pTbinEdges, nPtHistBins, pTbinEdges);
   // create efficiency histograms
-  hPhiRes[0] = new TH1D("hPhiResponse_pi", "", NPhiBins, f[0], f[1]);
-  hPhiRes[1] = new TH1D("hPhiResponse_ga", "", NPhiBins, f[0], f[1]);
   hPhiEff[0] = new TH1D("hPhiEfficiency_pi", "", NPhiBins, f[0], f[1]);
   hPhiEff[1] = new TH1D("hPhiEfficiency_ga", "", NPhiBins, f[0], f[1]);
-  hEtaRes[0] = new TH1D("hEtaResponse_pi", "", NEtaBins, h[0], h[1]);
-  hEtaRes[1] = new TH1D("hEtaResponse_ga", "", NEtaBins, h[0], h[1]);
   hEtaEff[0] = new TH1D("hEtaEfficiency_pi", "", NEtaBins, h[0], h[1]);
   hEtaEff[1] = new TH1D("hEtaEfficiency_ga", "", NEtaBins, h[0], h[1]);
-  hPtRes[0]  = new TH1D("hPtResponse_pi", "", nPtHistBins, pTbinEdges);
-  hPtRes[1]  = new TH1D("hPtResponse_ga", "", nPtHistBins, pTbinEdges);
   hPtEff[0]  = new TH1D("hPtEfficiency_pi", "", nPtHistBins, pTbinEdges);
   hPtEff[1]  = new TH1D("hPtEfficiency_ga", "", nPtHistBins, pTbinEdges);
   // create resolution histograms
-  hPhiDiff[0] = new TH1D("hPhiDifference_pi", "", nDf, dF[0], dF[1]);
-  hPhiDiff[1] = new TH1D("hPhiDifference_ga", "", nDf, dF[0], dF[1]);
-  hEtaDiff[0] = new TH1D("hEtaDifference_pi", "", nDh, dH[0], dH[1]);
-  hEtaDiff[1] = new TH1D("hEtaDifference_ga", "", nDh, dH[0], dH[1]);
-  hPtDiff[0]  = new TH1D("hPtDifference_pi", "", nDpt, dPt[0], dPt[1]);
-  hPtDiff[1]  = new TH1D("hPtDifference_ga", "", nDpt, dPt[0], dPt[1]);
+  hPhiRes[0]      = new TH1D("hPhiRes_pi", "", nDf, dF[0], dF[1]);
+  hPhiRes[1]      = new TH1D("hPhiRes_ga", "", nDf, dF[0], dF[1]);
+  hEtaRes[0]      = new TH1D("hEtaRes_pi", "", nDh, dH[0], dH[1]);
+  hEtaRes[1]      = new TH1D("hEtaRes_ga", "", nDh, dH[0], dH[1]);
+  hPtRes[0]       = new TH1D("hPtRes_pi", "", nDpt, dPt[0], dPt[1]);
+  hPtRes[1]       = new TH1D("hPtRes_ga", "", nDpt, dPt[0], dPt[1]);
+  hPhiResVsPhi[0] = new TH2D("hPhiResVsPhi_pi", "", NPhiBins, f[0], f[1], nDf, dF[0], dF[1]);
+  hPhiResVsPhi[1] = new TH2D("hPhiResVsPhi_ga", "", NPhiBins, f[0], f[1], nDf, dF[0], dF[1]);
+  hEtaResVsEta[0] = new TH2D("hEtaResVsEta_pi", "", NEtaBins, h[0], h[1], nDh, dH[0], dH[1]);
+  hEtaResVsEta[1] = new TH2D("hEtaResVsEta_ga", "", NEtaBins, h[0], h[1], nDh, dH[0], dH[1]);
+  hPtResVsPt[0]   = new TH2D("hPtResVsPt_pi", "", nPt2d, pT2d[0], pT2d[1], nDpt, dPt[0], dPt[1]);
+  hPtResVsPt[1]   = new TH2D("hPtResVsPt_ga", "", nPt2d, pT2d[0], pT2d[1], nDpt, dPt[0], dPt[1]);
   // errors
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
+    hPhiEff[iTrg]       -> Sumw2();
+    hEtaEff[iTrg]       -> Sumw2();
+    hPtEff[iTrg]        -> Sumw2();
     hPhiRes[iTrg]      -> Sumw2();
-    hPhiEff[iTrg]      -> Sumw2();
     hEtaRes[iTrg]      -> Sumw2();
-    hEtaEff[iTrg]      -> Sumw2();
     hPtRes[iTrg]       -> Sumw2();
-    hPtEff[iTrg]       -> Sumw2();
-    hPhiDiff[iTrg]     -> Sumw2();
-    hEtaDiff[iTrg]     -> Sumw2();
-    hPtDiff[iTrg]      -> Sumw2();
-    hPhiParVsDet[iTrg] -> Sumw2();
-    hEtaParVsDet[iTrg] -> Sumw2();
-    hPtParVsDet[iTrg]  -> Sumw2();
+    hPhiParVsDet[iTrg]  -> Sumw2();
+    hEtaParVsDet[iTrg]  -> Sumw2();
+    hPtParVsDet[iTrg]   -> Sumw2();
+    hPhiResVsPhi[iTrg] -> Sumw2();
+    hEtaResVsEta[iTrg] -> Sumw2();
+    hPtResVsPt[iTrg]   -> Sumw2();
     for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
       hPhiForEff[iLevel][iTrg] -> Sumw2();
       hEtaForEff[iLevel][iTrg] -> Sumw2();
@@ -594,6 +590,18 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     }  // end level loop
   }  // end trigger loop
   cout << "    Made histograms." << endl;
+
+  // make profiles
+  TProfile *pPhiResVsPhi[NTrgs];
+  TProfile *pEtaResVsEta[NTrgs];
+  TProfile *pPtResVsPt[NTrgs];
+  pPhiResVsPhi[0] = new TProfile("pPhiResVsPhi_pi", "", NPhiBins, f[0], f[1], "S");
+  pPhiResVsPhi[1] = new TProfile("pPhiResVsPhi_ga", "", NPhiBins, f[0], f[1], "S");
+  pEtaResVsEta[0] = new TProfile("pEtaResVsEta_pi", "", NEtaBins, h[0], h[1], "S");
+  pEtaResVsEta[1] = new TProfile("pEtaResVsEta_ga", "", NEtaBins, h[0], h[1], "S");
+  pPtResVsPt[0]   = new TProfile("pPtResVsPt_pi", "", nPt2d, pT2d[0], pT2d[1], "S");
+  pPtResVsPt[1]   = new TProfile("pPtResVsPt_ga", "", nPt2d, pT2d[0], pT2d[1], "S");
+  cout << "    Made profiles." << endl;
 
 
   const UInt_t nParEvts = tPar -> GetEntriesFast();
@@ -871,24 +879,36 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
             if (isPi0) {
               hPhiTrk[1][0][1] -> Fill(fTrk);
               hPhiForEff[1][0] -> Fill(fMC);
-              hPhiDiff[0]      -> Fill(fDiff);
+              hPhiRes[0]      -> Fill(fDiff);
+              hPhiResVsPhi[0] -> Fill(fMC, fDiff);
+              pPhiResVsPhi[0] -> Fill(fMC, fDiff);
               hEtaTrk[1][0][1] -> Fill(hTrk);
               hEtaForEff[1][0] -> Fill(hMC);
-              hEtaDiff[0]      -> Fill(hDiff);
+              hEtaRes[0]      -> Fill(hDiff);
+              hEtaResVsEta[0] -> Fill(hMC, hDiff);
+              pEtaResVsEta[0] -> Fill(hMC, hDiff);
               hPtTrk[1][0][1]  -> Fill(pTtrk);
               hPtForEff[1][0]  -> Fill(pTmc);
-              hPtDiff[0]       -> Fill(pTdiff);
+              hPtRes[0]       -> Fill(pTdiff);
+              hPtResVsPt[0]   -> Fill(pTmc, pTdiff);
+              pPtResVsPt[0]   -> Fill(pTmc, pTdiff);
             }
             if (isGam) {
               hPhiTrk[1][1][1] -> Fill(fTrk);
               hPhiForEff[1][1] -> Fill(fMC);
-              hPhiDiff[1]      -> Fill(fDiff);
+              hPhiRes[1]      -> Fill(fDiff);
+              hPhiResVsPhi[1] -> Fill(fMC, fDiff);
+              pPhiResVsPhi[1] -> Fill(fMC, fDiff);
               hEtaTrk[1][1][1] -> Fill(hTrk);
               hEtaForEff[1][1] -> Fill(hMC);
-              hEtaDiff[1]      -> Fill(hDiff);
+              hEtaRes[1]      -> Fill(hDiff);
+              hEtaResVsEta[1] -> Fill(hMC, hDiff);
+              pEtaResVsEta[1] -> Fill(hMC, hDiff);
               hPtTrk[1][1][1]  -> Fill(pTtrk);
               hPtForEff[1][1]  -> Fill(pTmc);
-              hPtDiff[1]       -> Fill(pTdiff);
+              hPtRes[1]       -> Fill(pTdiff);
+              hPtResVsPt[1]   -> Fill(pTmc, pTdiff);
+              pPtResVsPt[1]   -> Fill(pTmc, pTdiff);
             }
           }
         }  // end detector track loop
@@ -920,11 +940,8 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   // calculate ratios
   const Float_t weight(1.);
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
-    hPhiRes[iTrg] -> Divide(hPhiTrk[1][iTrg][1], hPhiTrk[1][iTrg][0], weight, weight);
     hPhiEff[iTrg] -> Divide(hPhiForEff[1][iTrg], hPhiForEff[0][iTrg], weight, weight);
-    hEtaRes[iTrg] -> Divide(hEtaTrk[1][iTrg][1], hEtaTrk[1][iTrg][0], weight, weight);
     hEtaEff[iTrg] -> Divide(hEtaForEff[1][iTrg], hEtaForEff[0][iTrg], weight, weight);
-    hPtRes[iTrg]  -> Divide(hPtTrk[1][iTrg][1], hPtTrk[1][iTrg][0], weight, weight);
     hPtEff[iTrg]  -> Divide(hPtForEff[1][iTrg], hPtForEff[0][iTrg], weight, weight);
   }
   cout << "    Ratios calculated." << endl;
@@ -957,64 +974,35 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   const Double_t hFitRange[2] = {-0.7, 0.7};
   const Double_t pFitRange[2] = {1., 7.};
 
-  TF1      *fPhiRes[NTrgs];
   TF1      *fPhiEff[NTrgs];
-  TF1      *fEtaRes[NTrgs];
   TF1      *fEtaEff[NTrgs];
-  TF1      *fPtRes[NTrgs];
   TF1      *fPtEff[NTrgs];
-  Double_t phiRes[NTrgs][NVal];
   Double_t phiEff[NTrgs][NVal];
-  Double_t etaRes[NTrgs][NVal];
   Double_t etaEff[NTrgs][NVal];
-  Double_t ptRes[NTrgs][NVal];
   Double_t ptEff[NTrgs][NVal];
-  Double_t ptSigR[NTrgs][NVal];
   Double_t ptSigE[NTrgs][NVal];
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
 
     // make names
-    TString sPhiR("fPhiRes");
     TString sPhiE("fPhiEff");
-    TString sEtaR("fEtaRes");
     TString sEtaE("fEtaEff");
-    TString sPtR("fPtRes");
     TString sPtE("fPtEff");
-    sPhiR += sTrg[iTrg];
     sPhiE += sTrg[iTrg];
-    sEtaR += sTrg[iTrg];
     sEtaE += sTrg[iTrg];
-    sPtR  += sTrg[iTrg];
     sPtE  += sTrg[iTrg];
 
     // define fits
-    fPhiRes[iTrg] = new TF1(sPhiR.Data(), "[0]", f[0], f[1]);
     fPhiEff[iTrg] = new TF1(sPhiE.Data(), "[0]", f[0], f[1]);
-    fEtaRes[iTrg] = new TF1(sEtaR.Data(), "[0]", h[0], h[1]);
     fEtaEff[iTrg] = new TF1(sEtaE.Data(), "[0]", h[0], h[1]);
-    fPtRes[iTrg]  = new TF1(sPtR.Data(), "[0]*(1-exp(-1.*[1]*x))", pTbinEdges[0], pTbinEdges[nPtHistBins]);
     fPtEff[iTrg]  = new TF1(sPtE.Data(), "[0]*(1-exp(-1.*[1]*x))", pTbinEdges[0], pTbinEdges[nPtHistBins]);
-    fPhiRes[iTrg] -> SetParameter(0, fEffGuess);
-    fPhiRes[iTrg] -> SetLineColor(fColF[iTrg]);
-    fPhiRes[iTrg] -> SetLineStyle(fLinF);
-    fPhiRes[iTrg] -> SetLineWidth(fSizF);
     fPhiEff[iTrg] -> SetParameter(0, fEffGuess);
     fPhiEff[iTrg] -> SetLineColor(fColF[iTrg]);
     fPhiEff[iTrg] -> SetLineStyle(fLinF);
     fPhiEff[iTrg] -> SetLineWidth(fSizF);
-    fEtaRes[iTrg] -> SetParameter(0, hEffGuess);
-    fEtaRes[iTrg] -> SetLineColor(fColF[iTrg]);
-    fEtaRes[iTrg] -> SetLineStyle(fLinF);
-    fEtaRes[iTrg] -> SetLineWidth(fSizF);
     fEtaEff[iTrg] -> SetParameter(0, hEffGuess);
     fEtaEff[iTrg] -> SetLineColor(fColF[iTrg]);
     fEtaEff[iTrg] -> SetLineStyle(fLinF);
     fEtaEff[iTrg] -> SetLineWidth(fSizF);
-    fPtRes[iTrg]  -> SetParameters(0, pEffGuess);
-    fPtRes[iTrg]  -> SetParameters(1, pSigGuess);
-    fPtRes[iTrg]  -> SetLineColor(fColF[iTrg]);
-    fPtRes[iTrg]  -> SetLineStyle(fLinF);
-    fPtRes[iTrg]  -> SetLineWidth(fSizF);
     fPtEff[iTrg]  -> SetParameters(0, pEffGuess);
     fPtEff[iTrg]  -> SetParameters(1, pSigGuess);
     fPtEff[iTrg]  -> SetLineColor(fColF[iTrg]);
@@ -1022,41 +1010,24 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     fPtEff[iTrg]  -> SetLineWidth(fSizF);
 
     // fit histograms
-    hPhiRes[iTrg] -> Fit(fPhiRes[iTrg], "BMQ0", "", fFitRange[0], fFitRange[1]);
     hPhiEff[iTrg] -> Fit(fPhiEff[iTrg], "BMQ0", "", fFitRange[0], fFitRange[1]);
-    hEtaRes[iTrg] -> Fit(fEtaRes[iTrg], "BMQ0", "", hFitRange[0], hFitRange[1]);
     hEtaEff[iTrg] -> Fit(fEtaEff[iTrg], "BMQ0", "", hFitRange[0], hFitRange[1]);
-    hPtRes[iTrg]  -> Fit(fPtRes[iTrg], "BMQ0", "", pFitRange[0], pFitRange[1]);
     hPtEff[iTrg]  -> Fit(fPtEff[iTrg], "BMQ0", "", pFitRange[0], pFitRange[1]);
-    phiRes[iTrg][0] = fPhiRes[iTrg] -> GetParameter(0);
-    phiRes[iTrg][1] = fPhiRes[iTrg] -> GetParError(0);
     phiEff[iTrg][0] = fPhiEff[iTrg] -> GetParameter(0);
     phiEff[iTrg][1] = fPhiEff[iTrg] -> GetParError(0);
-    etaRes[iTrg][0] = fEtaRes[iTrg] -> GetParameter(0);
-    etaRes[iTrg][1] = fEtaRes[iTrg] -> GetParError(0);
     etaEff[iTrg][0] = fEtaEff[iTrg] -> GetParameter(0);
     etaEff[iTrg][1] = fEtaEff[iTrg] -> GetParError(0);
-    ptRes[iTrg][0]  = fPtRes[iTrg]  -> GetParameter(0);
-    ptRes[iTrg][1]  = fPtRes[iTrg]  -> GetParError(0);
     ptEff[iTrg][0]  = fPtEff[iTrg]  -> GetParameter(0);
     ptEff[iTrg][1]  = fPtEff[iTrg]  -> GetParError(0);
-    ptSigR[iTrg][0] = fPtRes[iTrg]  -> GetParameter(1);
-    ptSigR[iTrg][1] = fPtRes[iTrg]  -> GetParError(1);
-    ptSigE[iTrg][0] = fPtRes[iTrg]  -> GetParameter(1);
-    ptSigE[iTrg][1] = fPtRes[iTrg]  -> GetParError(1);
+    ptSigE[iTrg][0] = fPtEff[iTrg]  -> GetParameter(1);
+    ptSigE[iTrg][1] = fPtEff[iTrg]  -> GetParError(1);
 
     // reset visibility
     const Int_t kNotDraw = 1<<9;
-    if (hPhiRes[iTrg] -> GetFunction(sPhiR.Data()))
-      hPhiRes[iTrg] -> GetFunction(sPhiR.Data()) -> ResetBit(kNotDraw);
     if (hPhiEff[iTrg] -> GetFunction(sPhiE.Data()))
       hPhiEff[iTrg] -> GetFunction(sPhiE.Data()) -> ResetBit(kNotDraw);
-    if (hEtaRes[iTrg] -> GetFunction(sEtaR.Data()))
-      hEtaRes[iTrg] -> GetFunction(sEtaR.Data()) -> ResetBit(kNotDraw);
     if (hEtaEff[iTrg] -> GetFunction(sEtaE.Data()))
       hEtaEff[iTrg] -> GetFunction(sEtaE.Data()) -> ResetBit(kNotDraw);
-    if (hPtRes[iTrg] -> GetFunction(sPtR.Data()))
-      hPtRes[iTrg] -> GetFunction(sPtR.Data()) -> ResetBit(kNotDraw);
     if (hPtEff[iTrg] -> GetFunction(sPtE.Data()))
       hPtEff[iTrg] -> GetFunction(sPtE.Data()) -> ResetBit(kNotDraw);
 
@@ -1088,37 +1059,17 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   const TString sTitleXP("p_{T}^{trk}");
   const TString sTitleYM("counts");
   const TString sTitleYF("(1/N^{trg}) dN^{trk}/d#varphi^{trk}");
-  const TString sTitleYFR("#tilde{#epsilon}(#varphi^{trk}) = #tilde{#epsilon}_{#varphi}");
   const TString sTitleYFE("#epsilon(#varphi^{trk}) = #epsilon_{#varphi}");
   const TString sTitleYH("(1/N^{trg}) dN^{trk}/d#eta^{trk}");
-  const TString sTitleYHR("#tilde{#epsilon}(#eta^{trk}) = #tilde{#epsilon}_{#eta}");
   const TString sTitleYHE("#epsilon(#eta^{trk}) = #epsilon_{#eta}");
   const TString sTitleYP("(1/N^{trg}) dN^{trk}/dp_{T}^{trk}");
-  const TString sTitleYPR("#tilde{#epsilon}(p_{T}^{trk}) = #tilde{#epsilon}_{p} (1 - exp(-#tilde{#sigma} #upoint p_{T}^{trk}))");
   const TString sTitleYPE("#epsilon(p_{T}^{trk}) = #epsilon_{p} (1 - exp(-#sigma #upoint p_{T}^{trk}))");
   const TString sTitleF[NTrgs] = {"Track #varphi: #pi^{0} trigger", "Track #varphi: #gamma^{rich}"};
   const TString sTitleH[NTrgs] = {"Track #eta: #pi^{0} trigger", "Track #eta: #gamma^{rich}"};
   const TString sTitleP[NTrgs] = {"Track p_{T}: #pi^{0}", "Track p_{T}: #gamma^{rich}"};
-  const TString sTitleR[NTrgs] = {"Cut response, #tilde{#epsilon}: #pi^{0} trigger", "Cut response, #tilde{#epsilon}: #gamma^{rich}"};
   const TString sTitleE[NTrgs] = {"Track efficiency, #epsilon: #pi^{0} trigger", "Track efficiency, #epsilon: #gamma^{rich}"};
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
     // phi efficiency histogram
-    hPhiRes[iTrg] -> SetLineColor(fColE);
-    hPhiRes[iTrg] -> SetMarkerColor(fColE);
-    hPhiRes[iTrg] -> SetMarkerStyle(fMarE);
-    hPhiRes[iTrg] -> SetTitle(sTitleR[iTrg].Data());
-    hPhiRes[iTrg] -> SetTitleFont(fTxt);
-    hPhiRes[iTrg] -> GetXaxis() -> SetTitle(sTitleXF.Data());
-    hPhiRes[iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
-    hPhiRes[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-    hPhiRes[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
-    hPhiRes[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
-    hPhiRes[iTrg] -> GetXaxis() -> SetRangeUser(fPhiRangeX[0], fPhiRangeX[1]);
-    hPhiRes[iTrg] -> GetYaxis() -> SetTitle(sTitleYFR.Data());
-    hPhiRes[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
-    hPhiRes[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
-    hPhiRes[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
-    hPhiRes[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     hPhiEff[iTrg] -> SetLineColor(fColE);
     hPhiEff[iTrg] -> SetMarkerColor(fColE);
     hPhiEff[iTrg] -> SetMarkerStyle(fMarE);
@@ -1136,22 +1087,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     hPhiEff[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
     hPhiEff[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     // eta efficiency histogram
-    hEtaRes[iTrg] -> SetLineColor(fColE);
-    hEtaRes[iTrg] -> SetMarkerColor(fColE);
-    hEtaRes[iTrg] -> SetMarkerStyle(fMarE);
-    hEtaRes[iTrg] -> SetTitle(sTitleR[iTrg].Data());
-    hEtaRes[iTrg] -> SetTitleFont(fTxt);
-    hEtaRes[iTrg] -> GetXaxis() -> SetTitle(sTitleXH.Data());
-    hEtaRes[iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
-    hEtaRes[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-    hEtaRes[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
-    hEtaRes[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
-    hEtaRes[iTrg] -> GetXaxis() -> SetRangeUser(fEtaRangeX[0], fEtaRangeX[1]);
-    hEtaRes[iTrg] -> GetYaxis() -> SetTitle(sTitleYHR.Data());
-    hEtaRes[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
-    hEtaRes[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
-    hEtaRes[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
-    hEtaRes[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     hEtaEff[iTrg] -> SetLineColor(fColE);
     hEtaEff[iTrg] -> SetMarkerColor(fColE);
     hEtaEff[iTrg] -> SetMarkerStyle(fMarE);
@@ -1169,22 +1104,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     hEtaEff[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
     hEtaEff[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     // pT efficiency histogram
-    hPtRes[iTrg] -> SetLineColor(fColE);
-    hPtRes[iTrg] -> SetMarkerColor(fColE);
-    hPtRes[iTrg] -> SetMarkerStyle(fMarE);
-    hPtRes[iTrg] -> SetTitle(sTitleR[iTrg].Data());
-    hPtRes[iTrg] -> SetTitleFont(fTxt);
-    hPtRes[iTrg] -> GetXaxis() -> SetTitle(sTitleXP.Data());
-    hPtRes[iTrg] -> GetXaxis() -> SetTitleFont(fTxt);
-    hPtRes[iTrg] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-    hPtRes[iTrg] -> GetXaxis() -> CenterTitle(fCnt);
-    hPtRes[iTrg] -> GetXaxis() -> SetLabelSize(fLab);
-    hPtRes[iTrg] -> GetXaxis() -> SetRangeUser(fPtEffRangeX[0], fPtEffRangeX[1]);
-    hPtRes[iTrg] -> GetYaxis() -> SetTitle(sTitleYPR.Data());
-    hPtRes[iTrg] -> GetYaxis() -> SetTitleFont(fTxt);
-    hPtRes[iTrg] -> GetYaxis() -> CenterTitle(fCnt);
-    hPtRes[iTrg] -> GetYaxis() -> SetLabelSize(fLab);
-    hPtRes[iTrg] -> GetYaxis() -> SetRangeUser(fEffRangeY[0], fEffRangeY[1]);
     hPtEff[iTrg] -> SetLineColor(fColE);
     hPtEff[iTrg] -> SetMarkerColor(fColE);
     hPtEff[iTrg] -> SetMarkerStyle(fMarE);
@@ -1319,122 +1238,65 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   const Float_t yLeg[2]      = {0.5, 0.7};
   const TString sSystem("pp-collisions, #sqrt{s} = 200 GeV");
   const TString sTrgKin("E_{T}^{trg} #in (9, 20) GeV, |#eta^{trg}| < 0.9");
-  const TString sPhiRes("#tilde{#epsilon}_{#varphi} = ");
   const TString sPhiEff("#epsilon_{#varphi} = ");
-  const TString sEtaRes("#tilde{#epsilon}_{#eta} = ");
   const TString sEtaEff("#epsilon_{#eta} = ");
-  const TString sPtRes("#tilde{#epsilon}_{p} = ");
   const TString sPtEff("#epsilon_{p} = ");
-  const TString sPtSigR("#tilde{#sigma}_{p} = ");
   const TString sPtSigE("#sigma_{p} = ");
-  const TString sLegRes[2] = {"before QA cuts", "after QA cuts"};
   const TString sLegEff[2] = {"particle", "detector"};
 
-  TLegend   *lPhiR[NTrgs];
   TLegend   *lPhiE[NTrgs];
-  TLegend   *lEtaR[NTrgs];
   TLegend   *lEtaE[NTrgs];
-  TLegend   *lPtR[NTrgs];
   TLegend   *lPtE[NTrgs];
-  TPaveText *pPhiR[NTrgs];
   TPaveText *pPhiE[NTrgs];
-  TPaveText *pEtaR[NTrgs];
   TPaveText *pEtaE[NTrgs];
-  TPaveText *pPtR[NTrgs];
   TPaveText *pPtE[NTrgs];
-  TString   sFrawR[NVal];
   TString   sFrawE[NVal];
-  TString   sHrawR[NVal];
   TString   sHrawE[NVal];
-  TString   sPErawR[NVal];
   TString   sPErawE[NVal];
-  TString   sPSrawR[NVal];
   TString   sPSrawE[NVal];
   for (UInt_t iTrg = 0; iTrg < NTrgs; iTrg++) {
 
-    TString sFtxtR(sPhiRes.Data());
     TString sFtxtE(sPhiEff.Data());
-    TString sHtxtR(sEtaRes.Data());
     TString sHtxtE(sEtaEff.Data());
-    TString sPEtxtR(sPtRes.Data());
     TString sPEtxtE(sPtEff.Data());
-    TString sPStxtR(sPtSigR.Data());
     TString sPStxtE(sPtSigE.Data());
     for (UInt_t iVal = 0; iVal < NVal; iVal++) {
-      sFrawR[iVal]   = "";
       sFrawE[iVal]   = "";
-      sHrawR[iVal]   = "";
       sHrawE[iVal]   = "";
-      sPErawR[iVal]  = "";
       sPErawE[iVal]  = "";
-      sPSrawR[iVal]  = "";
       sPSrawE[iVal]  = "";
-      sFrawR[iVal]  += phiRes[iTrg][iVal];
       sFrawE[iVal]  += phiEff[iTrg][iVal];
-      sHrawR[iVal]  += etaRes[iTrg][iVal];
       sHrawE[iVal]  += etaEff[iTrg][iVal];
-      sPErawR[iVal] += ptRes[iTrg][iVal];
       sPErawE[iVal] += ptEff[iTrg][iVal];
-      sPSrawR[iVal] += ptSigR[iTrg][iVal];
       sPSrawE[iVal] += ptSigE[iTrg][iVal];
 
-      const UInt_t nFrawR  = sFrawR[iVal].First(".");
       const UInt_t nFrawE  = sFrawE[iVal].First(".");
-      const UInt_t nHrawR  = sHrawR[iVal].First(".");
       const UInt_t nHrawE  = sHrawE[iVal].First(".");
-      const UInt_t nPErawR = sPErawR[iVal].First(".");
       const UInt_t nPErawE = sPErawE[iVal].First(".");
-      const UInt_t nPSrawR = sPSrawR[iVal].First(".");
       const UInt_t nPSrawE = sPSrawE[iVal].First(".");
-      const UInt_t nFtxtR  = (nFrawR + nDec) + 1;
       const UInt_t nFtxtE  = (nFrawE + nDec) + 1;
-      const UInt_t nHtxtR  = (nHrawR + nDec) + 1;
       const UInt_t nHtxtE  = (nHrawE + nDec) + 1;
-      const UInt_t nPEtxtR = (nPErawR + nDec) + 1;
       const UInt_t nPEtxtE = (nPErawE + nDec) + 1;
-      const UInt_t nPStxtR = (nPSrawR + nDec) + 1;
       const UInt_t nPStxtE = (nPSrawE + nDec) + 1;
       if (iVal == 0) {
-        sFtxtR.Append(sFrawR[iVal].Data(), nFtxtR);
         sFtxtE.Append(sFrawE[iVal].Data(), nFtxtE);
-        sHtxtR.Append(sHrawR[iVal].Data(), nHtxtR);
         sHtxtE.Append(sHrawE[iVal].Data(), nHtxtE);
-        sPEtxtR.Append(sPErawR[iVal].Data(), nPEtxtR);
         sPEtxtE.Append(sPErawE[iVal].Data(), nPEtxtE);
-        sPStxtR.Append(sPSrawR[iVal].Data(), nPStxtR);
         sPStxtE.Append(sPSrawE[iVal].Data(), nPStxtE);
       } 
       else {
-        sFtxtR  += " #pm ";
         sFtxtE  += " #pm ";
-        sHtxtR  += " #pm ";
         sHtxtE  += " #pm ";
-        sPEtxtR += " #pm ";
         sPEtxtE += " #pm ";
-        sPStxtR += " #pm ";
         sPStxtE += " #pm ";
-        sFtxtR.Append(sFrawR[iVal].Data(), nFtxtR);
         sFtxtE.Append(sFrawE[iVal].Data(), nFtxtE);
-        sHtxtR.Append(sHrawR[iVal].Data(), nHtxtR);
         sHtxtE.Append(sHrawE[iVal].Data(), nHtxtE);
-        sPEtxtR.Append(sPErawR[iVal].Data(), nPEtxtR);
         sPEtxtE.Append(sPErawE[iVal].Data(), nPEtxtE);
-        sPStxtR.Append(sPSrawR[iVal].Data(), nPStxtR);
         sPStxtE.Append(sPSrawE[iVal].Data(), nPStxtE);
       }
     }  // end value loop
 
     // phi labels
-    pPhiR[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
-    pPhiR[iTrg] -> SetFillColor(fColP);
-    pPhiR[iTrg] -> SetLineColor(fColP);
-    pPhiR[iTrg] -> SetTextColor(fColT[iTrg]);
-    pPhiR[iTrg] -> SetTextFont(fTxt);
-    pPhiR[iTrg] -> SetTextAlign(fAlign);
-    pPhiR[iTrg] -> AddText(sSystem.Data());
-    pPhiR[iTrg] -> AddText(sTrgKin.Data());
-    pPhiR[iTrg] -> AddText(sFtxtR.Data());
-
     pPhiE[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
     pPhiE[iTrg] -> SetFillColor(fColP);
     pPhiE[iTrg] -> SetLineColor(fColP);
@@ -1444,18 +1306,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     pPhiE[iTrg] -> AddText(sSystem.Data());
     pPhiE[iTrg] -> AddText(sTrgKin.Data());
     pPhiE[iTrg] -> AddText(sFtxtE.Data());
-
     // eta labels
-    pEtaR[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
-    pEtaR[iTrg] -> SetFillColor(fColP);
-    pEtaR[iTrg] -> SetLineColor(fColP);
-    pEtaR[iTrg] -> SetTextColor(fColT[iTrg]);
-    pEtaR[iTrg] -> SetTextFont(fTxt);
-    pEtaR[iTrg] -> SetTextAlign(fAlign);
-    pEtaR[iTrg] -> AddText(sSystem.Data());
-    pEtaR[iTrg] -> AddText(sTrgKin.Data());
-    pEtaR[iTrg] -> AddText(sHtxtR.Data());
-
     pEtaE[iTrg] = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
     pEtaE[iTrg] -> SetFillColor(fColP);
     pEtaE[iTrg] -> SetLineColor(fColP);
@@ -1465,19 +1316,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     pEtaE[iTrg] -> AddText(sSystem.Data());
     pEtaE[iTrg] -> AddText(sTrgKin.Data());
     pEtaE[iTrg] -> AddText(sHtxtE.Data());
-
     // pT labels
-    pPtR[iTrg]  = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
-    pPtR[iTrg] -> SetFillColor(fColP);
-    pPtR[iTrg] -> SetLineColor(fColP);
-    pPtR[iTrg] -> SetTextColor(fColT[iTrg]);
-    pPtR[iTrg] -> SetTextFont(fTxt);
-    pPtR[iTrg] -> SetTextAlign(fAlign);
-    pPtR[iTrg] -> AddText(sSystem.Data());
-    pPtR[iTrg] -> AddText(sTrgKin.Data());
-    pPtR[iTrg] -> AddText(sPEtxtR.Data());
-    pPtR[iTrg] -> AddText(sPStxtR.Data());
-
     pPtE[iTrg]  = new TPaveText(xPav[0], yPav[0], xPav[1], xPav[1], "NDC NB");
     pPtE[iTrg] -> SetFillColor(fColP);
     pPtE[iTrg] -> SetLineColor(fColP);
@@ -1489,45 +1328,21 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     pPtE[iTrg] -> AddText(sPEtxtE.Data());
     pPtE[iTrg] -> AddText(sPStxtE.Data());
 
-
     // phi legend
-    lPhiR[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
-    lPhiR[iTrg] -> SetFillColor(fColP);
-    lPhiR[iTrg] -> SetLineColor(fColP);
-    lPhiR[iTrg] -> SetTextFont(fTxt);
-    lPhiR[iTrg] -> AddEntry(hPhiTrk[1][iTrg][0], sLegRes[0].Data());
-    lPhiR[iTrg] -> AddEntry(hPhiTrk[1][iTrg][1], sLegRes[1].Data());
-
     lPhiE[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
     lPhiE[iTrg] -> SetFillColor(fColP);
     lPhiE[iTrg] -> SetLineColor(fColP);
     lPhiE[iTrg] -> SetTextFont(fTxt);
     lPhiE[iTrg] -> AddEntry(hPhiForEff[0][iTrg], sLegEff[0].Data());
     lPhiE[iTrg] -> AddEntry(hPhiForEff[1][iTrg], sLegEff[1].Data());
-
     // eta legend
-    lEtaR[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
-    lEtaR[iTrg] -> SetFillColor(fColP);
-    lEtaR[iTrg] -> SetLineColor(fColP);
-    lEtaR[iTrg] -> SetTextFont(fTxt);
-    lEtaR[iTrg] -> AddEntry(hEtaTrk[1][iTrg][0], sLegRes[0].Data());
-    lEtaR[iTrg] -> AddEntry(hEtaTrk[1][iTrg][1], sLegRes[1].Data());
-
     lEtaE[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
     lEtaE[iTrg] -> SetFillColor(fColP);
     lEtaE[iTrg] -> SetLineColor(fColP);
     lEtaE[iTrg] -> SetTextFont(fTxt);
     lEtaE[iTrg] -> AddEntry(hEtaForEff[0][iTrg], sLegEff[0].Data());
     lEtaE[iTrg] -> AddEntry(hEtaForEff[1][iTrg], sLegEff[1].Data());
-
     // pT legend
-    lPtR[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
-    lPtR[iTrg] -> SetFillColor(fColP);
-    lPtR[iTrg] -> SetLineColor(fColP);
-    lPtR[iTrg] -> SetTextFont(fTxt);
-    lPtR[iTrg] -> AddEntry(hPtTrk[1][iTrg][0], sLegRes[0].Data());
-    lPtR[iTrg] -> AddEntry(hPtTrk[1][iTrg][1], sLegRes[1].Data());
-
     lPtE[iTrg] = new TLegend(xLeg[0], yLeg[0], xLeg[1], yLeg[1]);
     lPtE[iTrg] -> SetFillColor(fColP);
     lPtE[iTrg] -> SetLineColor(fColP);
@@ -1561,19 +1376,22 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
       hEtaForEff[iLevel][iTrg] -> Write();
       hPtForEff[iLevel][iTrg]  -> Write();
     }  // end level loop
-    dTrgs[iTrg]        -> cd();
+    dTrgs[iTrg]         -> cd();
+    hPhiEff[iTrg]       -> Write();
+    hEtaEff[iTrg]       -> Write();
+    hPtEff[iTrg]        -> Write();
     hPhiRes[iTrg]      -> Write();
-    hPhiEff[iTrg]      -> Write();
     hEtaRes[iTrg]      -> Write();
-    hEtaEff[iTrg]      -> Write();
     hPtRes[iTrg]       -> Write();
-    hPtEff[iTrg]       -> Write();
-    hPhiDiff[iTrg]     -> Write();
-    hEtaDiff[iTrg]     -> Write();
-    hPtDiff[iTrg]      -> Write();
-    hPhiParVsDet[iTrg] -> Write();
-    hEtaParVsDet[iTrg] -> Write();
-    hPtParVsDet[iTrg]  -> Write();
+    hPhiParVsDet[iTrg]  -> Write();
+    hEtaParVsDet[iTrg]  -> Write();
+    hPtParVsDet[iTrg]   -> Write();
+    hPhiResVsPhi[iTrg] -> Write();
+    hEtaResVsEta[iTrg] -> Write();
+    hPtResVsPt[iTrg]   -> Write();
+    pPhiResVsPhi[iTrg] -> Write();
+    pEtaResVsEta[iTrg] -> Write();
+    pPtResVsPt[iTrg]   -> Write();
   }  // end trigger loop
   fOutput -> cd();
   cout << "    Made directories." << endl;
@@ -1595,11 +1413,8 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   TPad    *pEtaForEff[NTrgs];
   TPad    *pPtTrk[NTrgs];
   TPad    *pPtForEff[NTrgs];
-  TPad    *pPhiRes[NTrgs];
   TPad    *pPhiEff[NTrgs];
-  TPad    *pEtaRes[NTrgs];
   TPad    *pEtaEff[NTrgs];
-  TPad    *pPtRes[NTrgs];
   TPad    *pPtEff[NTrgs];
   TCanvas *cPhiTrk;
   TCanvas *cPhiForEff;
@@ -1607,39 +1422,11 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   TCanvas *cEtaForEff;
   TCanvas *cPtTrk;
   TCanvas *cPtForEff;
-  TCanvas *cPhiRes;
   TCanvas *cPhiEff;
-  TCanvas *cEtaRes;
   TCanvas *cEtaEff;
-  TCanvas *cPtRes;
   TCanvas *cPtEff;
   fOutput -> cd();
   // phi plots
-  cPhiTrk    = new TCanvas("cPhiTrk", "", width, height);
-  pPhiTrk[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
-  pPhiTrk[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pPhiTrk[0]       -> SetGrid(grid, grid);
-  pPhiTrk[0]       -> SetTicks(ticks, ticks);
-  pPhiTrk[0]       -> SetRightMargin(margin);
-  pPhiTrk[1]       -> SetGrid(grid, grid);
-  pPhiTrk[1]       -> SetTicks(ticks, ticks);
-  pPhiTrk[1]       -> SetLeftMargin(margin);
-  cPhiTrk          -> cd();
-  pPhiTrk[0]       -> Draw();
-  pPhiTrk[1]       -> Draw();
-  pPhiTrk[0]       -> cd();
-  hPhiTrk[1][0][0] -> Draw();
-  hPhiTrk[1][0][1] -> Draw("same");
-  lPhiR[0]         -> Draw();
-  pPhiR[0]         -> Draw();
-  pPhiTrk[1]       -> cd();
-  hPhiTrk[1][1][0] -> Draw();
-  hPhiTrk[1][1][1] -> Draw("same");
-  lPhiR[1]         -> Draw();
-  pPhiR[1]         -> Draw();
-  cPhiTrk          -> Write();
-  cPhiTrk          -> Close();
-
   cPhiForEff    = new TCanvas("cPhiForEff", "", width, height);
   pPhiForEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPhiForEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1666,31 +1453,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   cPhiForEff       -> Close();
 
   // eta plots
-  cEtaTrk    = new TCanvas("cEtaTrk", "", width, height);
-  pEtaTrk[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
-  pEtaTrk[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pEtaTrk[0]       -> SetGrid(grid, grid);
-  pEtaTrk[0]       -> SetTicks(ticks, ticks);
-  pEtaTrk[0]       -> SetRightMargin(margin);
-  pEtaTrk[1]       -> SetGrid(grid, grid);
-  pEtaTrk[1]       -> SetTicks(ticks, ticks);
-  pEtaTrk[1]       -> SetLeftMargin(margin);
-  cEtaTrk          -> cd();
-  pEtaTrk[0]       -> Draw();
-  pEtaTrk[1]       -> Draw();
-  pEtaTrk[0]       -> cd();
-  hEtaTrk[1][0][0] -> Draw();
-  hEtaTrk[1][0][1] -> Draw("same");
-  lEtaR[0]         -> Draw();
-  pEtaR[0]         -> Draw();
-  pEtaTrk[1]       -> cd();
-  hEtaTrk[1][1][0] -> Draw();
-  hEtaTrk[1][1][1] -> Draw("same");
-  lEtaR[1]         -> Draw();
-  pEtaR[1]         -> Draw();
-  cEtaTrk          -> Write();
-  cEtaTrk          -> Close();
-
   cEtaForEff    = new TCanvas("cEtaForEff", "", width, height);
   pEtaForEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pEtaForEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1717,33 +1479,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   cEtaForEff       -> Close();
 
   // pT plots
-  cPtTrk    = new TCanvas("cPtTrk", "", width, height);
-  pPtTrk[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
-  pPtTrk[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pPtTrk[0]       -> SetGrid(grid, grid);
-  pPtTrk[0]       -> SetTicks(ticks, ticks);
-  pPtTrk[0]       -> SetRightMargin(margin);
-  pPtTrk[0]       -> SetLogy(log);
-  pPtTrk[1]       -> SetGrid(grid, grid);
-  pPtTrk[1]       -> SetTicks(ticks, ticks);
-  pPtTrk[1]       -> SetLeftMargin(margin);
-  pPtTrk[1]       -> SetLogy(log);
-  cPtTrk          -> cd();
-  pPtTrk[0]       -> Draw();
-  pPtTrk[1]       -> Draw();
-  pPtTrk[0]       -> cd();
-  hPtTrk[1][0][0] -> Draw();
-  hPtTrk[1][0][1] -> Draw("same");
-  lPtR[0]         -> Draw();
-  pPtR[0]         -> Draw();
-  pPtTrk[1]       -> cd();
-  hPtTrk[1][1][0] -> Draw();
-  hPtTrk[1][1][1] -> Draw("same");
-  lPtR[1]         -> Draw();
-  pPtR[1]         -> Draw();
-  cPtTrk          -> Write();
-  cPtTrk          -> Close();
-
   cPtForEff    = new TCanvas("cPtForEff", "", width, height);
   pPtForEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPtForEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1772,27 +1507,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   cPtForEff       -> Close();
 
   // phi efficiency plots
-  cPhiRes    = new TCanvas("cPhiRes", "", width, height);
-  pPhiRes[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
-  pPhiRes[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pPhiRes[0] -> SetGrid(grid, grid);
-  pPhiRes[0] -> SetTicks(ticks, ticks);
-  pPhiRes[0] -> SetRightMargin(margin);
-  pPhiRes[1] -> SetGrid(grid, grid);
-  pPhiRes[1] -> SetTicks(ticks, ticks);
-  pPhiRes[1] -> SetLeftMargin(margin);
-  cPhiRes    -> cd();
-  pPhiRes[0] -> Draw();
-  pPhiRes[1] -> Draw();
-  pPhiRes[0] -> cd();
-  hPhiRes[0] -> Draw();
-  pPhiR[0]   -> Draw();
-  pPhiRes[1] -> cd();
-  hPhiRes[1] -> Draw();
-  pPhiR[1]   -> Draw();
-  cPhiRes    -> Write();
-  cPhiRes    -> Close();
-
   cPhiEff    = new TCanvas("cPhiEff", "", width, height);
   pPhiEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPhiEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1815,27 +1529,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   cPhiEff    -> Close();
 
   // eta efficiency plots
-  cEtaRes    = new TCanvas("cEtaRes", "", width, height);
-  pEtaRes[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
-  pEtaRes[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pEtaRes[0] -> SetGrid(grid, grid);
-  pEtaRes[0] -> SetTicks(ticks, ticks);
-  pEtaRes[0] -> SetRightMargin(margin);
-  pEtaRes[1] -> SetGrid(grid, grid);
-  pEtaRes[1] -> SetTicks(ticks, ticks);
-  pEtaRes[1] -> SetLeftMargin(margin);
-  cEtaRes    -> cd();
-  pEtaRes[0] -> Draw();
-  pEtaRes[1] -> Draw();
-  pEtaRes[0] -> cd();
-  hEtaRes[0] -> Draw();
-  pEtaR[0]   -> Draw();
-  pEtaRes[1] -> cd();
-  hEtaRes[1] -> Draw();
-  pEtaR[1]   -> Draw();
-  cEtaRes    -> Write();
-  cEtaRes    -> Close();
-
   cEtaEff    = new TCanvas("cEtaEff", "", width, height);
   pEtaEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pEtaEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
@@ -1858,27 +1551,6 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   cEtaEff    -> Close();
 
   // pT efficiency plots
-  cPtRes    = new TCanvas("cPtRes", "", width, height);
-  pPtRes[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
-  pPtRes[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
-  pPtRes[0] -> SetGrid(grid, grid);
-  pPtRes[0] -> SetTicks(ticks, ticks);
-  pPtRes[0] -> SetRightMargin(margin);
-  pPtRes[1] -> SetGrid(grid, grid);
-  pPtRes[1] -> SetTicks(ticks, ticks);
-  pPtRes[1] -> SetLeftMargin(margin);
-  cPtRes    -> cd();
-  pPtRes[0] -> Draw();
-  pPtRes[1] -> Draw();
-  pPtRes[0] -> cd();
-  hPtRes[0] -> Draw();
-  pPtR[0]   -> Draw();
-  pPtRes[1] -> cd();
-  hPtRes[1] -> Draw();
-  pPtR[1]   -> Draw();
-  cPtRes    -> Write();
-  cPtRes    -> Close();
-
   cPtEff    = new TCanvas("cPtEff", "", width, height);
   pPtEff[0] = new TPad(sPads[0], "", xPad[0], 0., xPad[1], 1.);
   pPtEff[1] = new TPad(sPads[1], "", xPad[2], 0., xPad[3], 1.);
