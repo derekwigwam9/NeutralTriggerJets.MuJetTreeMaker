@@ -39,8 +39,7 @@ static const UInt_t NPhiBins(61);
 static const UInt_t NEtaBins(41);
 static const UInt_t NPtBins(48);
 static const UInt_t NEmbed(10);
-//static const UInt_t NFiles(10);
-static const UInt_t NFiles(1);
+static const UInt_t NFiles(10);
 static const UInt_t NLevel(2);
 static const UInt_t NHist(3);
 static const UInt_t NCut(2);
@@ -58,17 +57,15 @@ void CalculateEfficiency() {
 
   // io parameters
   const UInt_t  maker(1);
-  //const TString sOutput("pp200r9embed.efficiency.moreVariableBins.d11m4y2018.root");
-  const TString sOutput("test2.root");
-  const TString sInput[NFiles] = {/*"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root", */"../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
+  const TString sOutput("pp200r9embed.efficiency.withResolution.d13m4y2018.root");
+  const TString sInput[NFiles] = {"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root", "../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
 
   // parameters for individual files
-  const TString sDate("d11m4y2018");
+  const TString sDate("d13m4y2018");
   const TString sSystem("pp200r9");
-  //const TString sOutLabel("binEfficiency.moreVariableSize");
-  const TString sOutLabel("test2");
+  const TString sOutLabel("withResolution");
   const TString sTree[NLevel]     = {"McTracks", "GfmtoDst_mu"};
-  const TString sBinLabel[NFiles] = {/*"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25", */"pt35"};
+  const TString sBinLabel[NFiles] = {"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25", "pt35"};
 
   // other parameters
   const Bool_t   batch(false);
@@ -370,27 +367,27 @@ void CalculateEfficiency() {
           break;
       }
     }  // end file loop
-  }  // end histogram loop
+  }  // end variable loop
   cout << "    Summed resolution histograms." << endl;
 
 
-  // normalize histograms
+  // normalize efficiency histograms
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
     for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
       const UInt_t   bins = hSum[iHist][iLevel] -> GetNbinsX();
       const Double_t norm = nTrgTot[0];
       hSum[iHist][iLevel] -> Scale(1. / norm);
       for (UInt_t iBin = 1; iBin <= bins; iBin++) {
-        const Double_t binW  = hSum[iHist][iLevel] -> GetBinWidth(iBin);
-        const Double_t value = hSum[iHist][iLevel] -> GetBinContent(iBin);
-        const Double_t error = hSum[iHist][iLevel] -> GetBinError(iBin);
-        const Double_t newV  = value / binW;
-        const Double_t newE  = error / binW;
+        const Double_t binW = hSum[iHist][iLevel] -> GetBinWidth(iBin);
+        const Double_t binV = hSum[iHist][iLevel] -> GetBinContent(iBin);
+        const Double_t binE = hSum[iHist][iLevel] -> GetBinError(iBin);
+        const Double_t newV = binV / binW;
+        const Double_t newE = binE / binW;
         hSum[iHist][iLevel] -> SetBinContent(iBin, newV);
         hSum[iHist][iLevel] -> SetBinError(iBin, newE);
       }
     }  // end level loop
-  }  // end hist loop
+  }  // end variable loop
   cout << "    Normalized histograms." << endl;
 
 
@@ -467,7 +464,7 @@ void CalculateEfficiency() {
   cout << "    Fit efficiencies." << endl;
 
 
-  // set styles
+  // set efficiency styles
   const UInt_t  fTxt(42);
   const UInt_t  fCnt(1);
   const UInt_t  fColE(1);
@@ -517,6 +514,54 @@ void CalculateEfficiency() {
       hSum[iHist][iLevel] -> GetYaxis() -> SetLabelSize(fLab);
     }  // end level loop
   }  // end variable loop
+
+  // set resolution styles
+  const UInt_t  fColR(1);
+  const UInt_t  fMarR(8);
+  const TString sTitleR1D[NHist] = {"#varphi^{trk} resolution, #sigma(#varphi^{trk})", "#eta^{trk} resolution, #sigma(#eta^{trk})", "p_{T}^{trk} resolution, #sigma(p_{T}^{trk})"};
+  const TString sTitleR2D[NHist] = {"#sigma(#varphi^{trk}) vs. #varphi^{MC}", "#sigma(#eta^{trk}) vs. #eta^{MC}", "#sigma(p_{T}^{trk}) vs. p_{T}^{MC}"};
+  const TString sTitleR1X[NHist] = {"#sigma(#varphi^{trk}) = (#varphi^{MC} - #varphi^{trk}) / #varphi^{MC}", "#sigma(#eta^{trk}) = (#eta^{MC} - #eta^{trk}) / #eta^{MC}", "#sigma(p_{T}^{trk}) = (p_{T}^{MC} - p_{T}^{trk}) / p_{T}^{MC}"};
+  const TString sTitleR1Y[NHist] = {"dN^{trk}/d#sigma(#varphi^{trk})", "dN^{trk}/d#sigma(#eta^{trk})", "dN^{trk}/d#sigma(p_{T}^{trk})"};
+  const TString sTitleR2X[NHist] = {"#varphi^{MC}", "#eta^{MC}", "p_{T}^{MC}"};
+  const TString sTitleR2Y[NHist] = {"#sigma(#varphi^{trk})", "#sigma(#eta^{trk})", "#sigma(p_{T}^{trk})"};
+  for (UInt_t iHist = 0; iHist < NHist; iHist++) {
+    hRes1D[iHist] -> SetLineColor(fColR);
+    hRes1D[iHist] -> SetMarkerColor(fColR);
+    hRes1D[iHist] -> SetMarkerStyle(fMarR);
+    hRes1D[iHist] -> SetTitle(sTitleR1D[iHist]);
+    hRes1D[iHist] -> SetTitleFont(fTxt);
+    hRes1D[iHist] -> GetXaxis() -> SetTitle(sTitleR1X[iHist].Data());
+    hRes1D[iHist] -> GetXaxis() -> SetTitleFont(fTxt);
+    hRes1D[iHist] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+    hRes1D[iHist] -> GetXaxis() -> CenterTitle(fCnt);
+    hRes1D[iHist] -> GetXaxis() -> SetLabelSize(fLab);
+    hRes1D[iHist] -> GetYaxis() -> SetTitle(sTitleR1Y[iHist].Data());
+    hRes1D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
+    hRes1D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
+    hRes1D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
+    hRes2D[iHist] -> SetTitle(sTitleR2D[iHist]);
+    hRes2D[iHist] -> SetTitleFont(fTxt);
+    hRes2D[iHist] -> GetXaxis() -> SetTitle(sTitleR2X[iHist].Data());
+    hRes2D[iHist] -> GetXaxis() -> SetTitleFont(fTxt);
+    hRes2D[iHist] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+    hRes2D[iHist] -> GetXaxis() -> CenterTitle(fCnt);
+    hRes2D[iHist] -> GetXaxis() -> SetLabelSize(fLab);
+    hRes2D[iHist] -> GetYaxis() -> SetTitle(sTitleR2Y[iHist].Data());
+    hRes2D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
+    hRes2D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
+    hRes2D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
+    pRes2D[iHist] -> SetTitle(sTitleR2D[iHist]);
+    pRes2D[iHist] -> SetTitleFont(fTxt);
+    pRes2D[iHist] -> GetXaxis() -> SetTitle(sTitleR2X[iHist].Data());
+    pRes2D[iHist] -> GetXaxis() -> SetTitleFont(fTxt);
+    pRes2D[iHist] -> GetXaxis() -> SetTitleOffset(fOffsetX);
+    pRes2D[iHist] -> GetXaxis() -> CenterTitle(fCnt);
+    pRes2D[iHist] -> GetXaxis() -> SetLabelSize(fLab);
+    pRes2D[iHist] -> GetYaxis() -> SetTitle(sTitleR2Y[iHist].Data());
+    pRes2D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
+    pRes2D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
+    pRes2D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
+  }
   cout << "    Set styles." << endl;
 
 
@@ -667,7 +712,7 @@ void CalculateEfficiency() {
     dLvl[iLevel] -> cd();
     for (UInt_t iHist = 0; iHist < NHist; iHist++) {
       hSum[iHist][iLevel] -> Write();
-    }  // end hist loop
+    }  // end variable loop
   }  // end level loop
   fOutput -> cd();
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
