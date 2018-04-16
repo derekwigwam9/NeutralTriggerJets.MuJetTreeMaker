@@ -199,64 +199,8 @@ void CalculateEfficiency() {
   else
     cout << "    Grabbed efficiency histograms." << endl;
 
-  // grab resolution histograms
-  const TString sRes1D[NHist] = {"pi0/hPhiRes_pi", "pi0/hEtaRes_pi", "pi0/hPtRes_pi"};
-  const TString sRes2D[NHist] = {"pi0/hPhiResVsPhi_pi", "pi0/hEtaResVsEta_pi", "pi0/hPtResVsPt_pi"};
-  const TString sResPR[NHist] = {"pi0/pPhiResVsPhi_pi", "pi0/pEtaResVsEta_pi", "pi0/pPtResVsPt_pi"};
 
-  TH1D     *hPhiRes[NFiles];
-  TH1D     *hEtaRes[NFiles];
-  TH1D     *hPtRes[NFiles];
-  TH2D     *hResVsPhi[NFiles];
-  TH2D     *hResVsEta[NFiles];
-  TH2D     *hResVsPt[NFiles];
-  TProfile *pResVsPhi[NFiles];
-  TProfile *pResVsEta[NFiles];
-  TProfile *pResVsPt[NFiles];
-  for (UInt_t iFile = 0; iFile < NFiles; iFile++) {
-    // grab 1d histograms
-    hPhiRes[iFile] = (TH1D*) fInput[iFile] -> Get(sRes1D[0].Data());
-    hEtaRes[iFile] = (TH1D*) fInput[iFile] -> Get(sRes1D[1].Data());
-    hPtRes[iFile]  = (TH1D*) fInput[iFile] -> Get(sRes1D[2].Data());
-    if (!hPhiRes[iFile] || !hEtaRes[iFile] || !hPtRes[iFile]) {
-      cerr << "PANIC: couldn't grab 1D resolution histogram!\n"
-           << "       check file " << iFile << "..."
-           << endl;
-      err = 4;
-      break;
-    }
-
-    // grab 2d histograms
-    hResVsPhi[iFile] = (TH2D*) fInput[iFile] -> Get(sRes2D[0].Data());
-    hResVsEta[iFile] = (TH2D*) fInput[iFile] -> Get(sRes2D[1].Data());
-    hResVsPt[iFile]  = (TH2D*) fInput[iFile] -> Get(sRes2D[2].Data());
-    if (!hResVsPhi[iFile] || !hResVsEta[iFile] || !hResVsPt[iFile]) {
-      cerr << "PANIC: couldn't grab 2D resolution histogram!\n"
-           << "       check file " << iFile << "..."
-           << endl;
-      err = 4;
-      break;
-    }
-
-    // grab profiles
-    pResVsPhi[iFile] = (TProfile*) fInput[iFile] -> Get(sResPR[0].Data());
-    pResVsEta[iFile] = (TProfile*) fInput[iFile] -> Get(sResPR[1].Data());
-    pResVsPt[iFile]  = (TProfile*) fInput[iFile] -> Get(sResPR[2].Data());
-    if (!pResVsPhi[iFile] || !pResVsEta[iFile] || !pResVsPt[iFile]) {
-      cerr << "PANIC: couldn't grab resolution profile!\n"
-           << "       check file " << iFile << "..."
-           << endl;
-      err = 4;
-      break;
-    }
-  }  // end file loop
-  if (err == 4)
-    assert(0);
-  else
-    cout << "    Grabbed resolution histograms." << endl;
-
-
-  // for binning
+  // binning
   Double_t phiBins[NPhiBins];
   Double_t etaBins[NEtaBins];
   Double_t pTbins[NPtBins];
@@ -275,28 +219,11 @@ void CalculateEfficiency() {
   etaBins[nEtaHistBins] = etaMaxEdge;
   pTbins[nPtHistBins]   = pTmaxEdge;
 
-  // get resolution bin edges
-  const UInt_t   nPhiResBins = hPhiRes[0]   -> GetNbinsX();
-  const UInt_t   nPhiTrkBins = hResVsPhi[0] -> GetNbinsX();
-  const UInt_t   nEtaResBins = hEtaRes[0]   -> GetNbinsX();
-  const UInt_t   nEtaTrkBins = hResVsEta[0] -> GetNbinsX();
-  const UInt_t   nPtResBins  = hPtRes[0]    -> GetNbinsX();
-  const UInt_t   nPtTrkBins  = hResVsPt[0]  -> GetNbinsX();
-  const Double_t phiRes[2]   = {hPhiRes[0] -> GetBinLowEdge(0), hPhiRes[0] -> GetBinLowEdge(nPhiResBins + 1)};
-  const Double_t phiTrk[2]   = {hResVsPhi[0] -> GetXaxis() -> GetBinLowEdge(0), hResVsPhi[0] -> GetXaxis() -> GetBinLowEdge(nPhiTrkBins + 1)};
-  const Double_t etaRes[2]   = {hEtaRes[0] -> GetBinLowEdge(0), hEtaRes[0] -> GetBinLowEdge(nEtaResBins + 1)};
-  const Double_t etaTrk[2]   = {hResVsEta[0] -> GetXaxis() -> GetBinLowEdge(0), hResVsEta[0] -> GetXaxis() -> GetBinLowEdge(nPhiTrkBins + 1)};
-  const Double_t ptRes[2]    = {hPtRes[0] -> GetBinLowEdge(0), hPtRes[0] -> GetBinLowEdge(nPtResBins + 1)};
-  const Double_t ptTrk[2]    = {hResVsPt[0] -> GetXaxis() -> GetBinLowEdge(0), hResVsPt[0] -> GetXaxis() -> GetBinLowEdge(nPhiTrkBins + 1)};
-
   // names
   const TString sSumBase[NHist]   = {"hPhiSum", "hEtaSum", "hPtSum"};
-  const TString sResBase1D[NHist] = {"hPhiRes", "hEtaRes", "hPtRes"};
-  const TString sResBase2D[NHist] = {"hResVsPhi", "hResVsEta", "hResVsPt"};
-  const TString sResBasePR[NHist] = {"pResVsPhi", "pResVsEta", "pResVsPt"};
   const TString sSumLvl[NLevel]   = {"_par", "_det"};
 
-  // sum efficiency histograms
+  // sum histograms
   TH1D    *hSum[NHist][NLevel];
   TString sSumName[NHist];
   for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
@@ -322,56 +249,10 @@ void CalculateEfficiency() {
       hSum[2][iLevel] -> Add(hPt[iFile][iLevel], weights[iWeight]);
     }  // end file loop
   }  // end level loop
-  cout << "    Summed efficiency histograms." << endl;
-
-  // sum resolution histograms
-  TH1D     *hRes1D[NHist];
-  TH2D     *hRes2D[NHist];
-  TProfile *pRes2D[NHist];
-  for (UInt_t iHist = 0; iHist < NHist; iHist++) {
-    // declare histograms
-    switch (iHist) {
-      case 0:
-        hRes1D[iHist] = new TH1D(sResBase1D[iHist].Data(), "", nPhiResBins, phiRes[0], phiRes[1]);
-        hRes2D[iHist] = new TH2D(sResBase2D[iHist].Data(), "", nPhiTrkBins, phiTrk[0], phiTrk[1], nPhiResBins, phiRes[0], phiRes[1]);
-        pRes2D[iHist] = new TProfile(sResBasePR[iHist].Data(), "", nPhiTrkBins, phiTrk[0], phiTrk[1], "S");
-        break;
-      case 1:
-        hRes1D[iHist] = new TH1D(sResBase1D[iHist].Data(), "", nEtaResBins, etaRes[0], etaRes[1]);
-        hRes2D[iHist] = new TH2D(sResBase2D[iHist].Data(), "", nEtaTrkBins, etaTrk[0], etaTrk[1], nEtaResBins, etaRes[0], etaRes[1]);
-        pRes2D[iHist] = new TProfile(sResBasePR[iHist].Data(), "", nEtaTrkBins, etaTrk[0], etaTrk[1], "S");
-        break;
-      case 2:
-        hRes1D[iHist] = new TH1D(sResBase1D[iHist].Data(), "", nPtResBins, ptRes[0], ptRes[1]);
-        hRes2D[iHist] = new TH2D(sResBase2D[iHist].Data(), "", nPtTrkBins, ptTrk[0], ptTrk[1], nPtResBins, ptRes[0], ptRes[1]);
-        pRes2D[iHist] = new TProfile(sResBasePR[iHist].Data(), "", nPtTrkBins, ptTrk[0], ptTrk[1], "S");
-        break;
-    }
-    for (UInt_t iFile = 0; iFile < NFiles; iFile++) {
-      const UInt_t iWeight = (NEmbed - NFiles) + iFile;
-      switch (iHist) {
-        case 0:
-          hRes1D[iHist] -> Add(hPhiRes[iFile], weights[iWeight]);
-          hRes2D[iHist] -> Add(hResVsPhi[iFile], weights[iWeight]);
-          pRes2D[iHist] -> Add(pResVsPhi[iFile], weights[iWeight]);
-          break;
-        case 1:
-          hRes1D[iHist] -> Add(hEtaRes[iFile], weights[iWeight]);
-          hRes2D[iHist] -> Add(hResVsEta[iFile], weights[iWeight]);
-          pRes2D[iHist] -> Add(pResVsEta[iFile], weights[iWeight]);
-          break;
-        case 2:
-          hRes1D[iHist] -> Add(hPtRes[iFile], weights[iWeight]);
-          hRes2D[iHist] -> Add(hResVsPt[iFile], weights[iWeight]);
-          pRes2D[iHist] -> Add(pResVsPt[iFile], weights[iWeight]);
-          break;
-      }
-    }  // end file loop
-  }  // end variable loop
-  cout << "    Summed resolution histograms." << endl;
+  cout << "    Summed histograms." << endl;
 
 
-  // normalize efficiency histograms
+  // normalize histograms
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
     for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
       const UInt_t   bins = hSum[iHist][iLevel] -> GetNbinsX();
@@ -514,54 +395,6 @@ void CalculateEfficiency() {
       hSum[iHist][iLevel] -> GetYaxis() -> SetLabelSize(fLab);
     }  // end level loop
   }  // end variable loop
-
-  // set resolution styles
-  const UInt_t  fColR(1);
-  const UInt_t  fMarR(8);
-  const TString sTitleR1D[NHist] = {"#varphi^{trk} resolution, #sigma(#varphi^{trk})", "#eta^{trk} resolution, #sigma(#eta^{trk})", "p_{T}^{trk} resolution, #sigma(p_{T}^{trk})"};
-  const TString sTitleR2D[NHist] = {"#sigma(#varphi^{trk}) vs. #varphi^{MC}", "#sigma(#eta^{trk}) vs. #eta^{MC}", "#sigma(p_{T}^{trk}) vs. p_{T}^{MC}"};
-  const TString sTitleR1X[NHist] = {"#sigma(#varphi^{trk}) = (#varphi^{MC} - #varphi^{trk}) / #varphi^{MC}", "#sigma(#eta^{trk}) = (#eta^{MC} - #eta^{trk}) / #eta^{MC}", "#sigma(p_{T}^{trk}) = (p_{T}^{MC} - p_{T}^{trk}) / p_{T}^{MC}"};
-  const TString sTitleR1Y[NHist] = {"dN^{trk}/d#sigma(#varphi^{trk})", "dN^{trk}/d#sigma(#eta^{trk})", "dN^{trk}/d#sigma(p_{T}^{trk})"};
-  const TString sTitleR2X[NHist] = {"#varphi^{MC}", "#eta^{MC}", "p_{T}^{MC}"};
-  const TString sTitleR2Y[NHist] = {"#sigma(#varphi^{trk})", "#sigma(#eta^{trk})", "#sigma(p_{T}^{trk})"};
-  for (UInt_t iHist = 0; iHist < NHist; iHist++) {
-    hRes1D[iHist] -> SetLineColor(fColR);
-    hRes1D[iHist] -> SetMarkerColor(fColR);
-    hRes1D[iHist] -> SetMarkerStyle(fMarR);
-    hRes1D[iHist] -> SetTitle(sTitleR1D[iHist]);
-    hRes1D[iHist] -> SetTitleFont(fTxt);
-    hRes1D[iHist] -> GetXaxis() -> SetTitle(sTitleR1X[iHist].Data());
-    hRes1D[iHist] -> GetXaxis() -> SetTitleFont(fTxt);
-    hRes1D[iHist] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-    hRes1D[iHist] -> GetXaxis() -> CenterTitle(fCnt);
-    hRes1D[iHist] -> GetXaxis() -> SetLabelSize(fLab);
-    hRes1D[iHist] -> GetYaxis() -> SetTitle(sTitleR1Y[iHist].Data());
-    hRes1D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
-    hRes1D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
-    hRes1D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
-    hRes2D[iHist] -> SetTitle(sTitleR2D[iHist]);
-    hRes2D[iHist] -> SetTitleFont(fTxt);
-    hRes2D[iHist] -> GetXaxis() -> SetTitle(sTitleR2X[iHist].Data());
-    hRes2D[iHist] -> GetXaxis() -> SetTitleFont(fTxt);
-    hRes2D[iHist] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-    hRes2D[iHist] -> GetXaxis() -> CenterTitle(fCnt);
-    hRes2D[iHist] -> GetXaxis() -> SetLabelSize(fLab);
-    hRes2D[iHist] -> GetYaxis() -> SetTitle(sTitleR2Y[iHist].Data());
-    hRes2D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
-    hRes2D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
-    hRes2D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
-    pRes2D[iHist] -> SetTitle(sTitleR2D[iHist]);
-    pRes2D[iHist] -> SetTitleFont(fTxt);
-    pRes2D[iHist] -> GetXaxis() -> SetTitle(sTitleR2X[iHist].Data());
-    pRes2D[iHist] -> GetXaxis() -> SetTitleFont(fTxt);
-    pRes2D[iHist] -> GetXaxis() -> SetTitleOffset(fOffsetX);
-    pRes2D[iHist] -> GetXaxis() -> CenterTitle(fCnt);
-    pRes2D[iHist] -> GetXaxis() -> SetLabelSize(fLab);
-    pRes2D[iHist] -> GetYaxis() -> SetTitle(sTitleR2Y[iHist].Data());
-    pRes2D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
-    pRes2D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
-    pRes2D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
-  }
   cout << "    Set styles." << endl;
 
 
@@ -640,22 +473,16 @@ void CalculateEfficiency() {
   const UInt_t  height(750);
   const UInt_t  grid(0);
   const UInt_t  ticks(0);
-  const UInt_t  logRes(1);
   const UInt_t  log[NHist]      = {0, 0, 1};
   const Float_t xPad[4]         = {0., 0.5, 0.5, 1.};
   const Float_t yPad[4]         = {0., 1., 0., 1.};
   const TString sEffPads[2]     = {"pRatio", "pTracks"};
-  const TString sResPads[2]     = {"pRes1D", "pRes2D"};
   const TString sEffPlot[NHist] = {"cPhiEfficiency", "cEtaEfficiency", "cPtEfficiency"};
-  const TString sResPlot[NHist] = {"cPhiResolution", "cEtaResolution", "cPtResolution"};
 
   TPad    *pEff[NHist][2];
-  TPad    *pRes[NHist][2];
   TCanvas *cEff[NHist];
-  TCanvas *cRes[NHist];
   fOutput -> cd();
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
-    // efficiency plot
     cEff[iHist]    = new TCanvas(sEffPlot[iHist].Data(), "", width, height);
     pEff[iHist][0] = new TPad(sEffPads[0].Data(), "", xPad[0], yPad[0], xPad[1], yPad[1]);
     pEff[iHist][1] = new TPad(sEffPads[1].Data(), "", xPad[2], yPad[2], xPad[3], yPad[3]);
@@ -676,25 +503,6 @@ void CalculateEfficiency() {
     lTrks[iHist]   -> Draw();
     cEff[iHist]    -> Write();
     cEff[iHist]    -> Close();
-
-    // resolution plot
-    cRes[iHist]    = new TCanvas(sResPlot[iHist].Data(), "", width, height);
-    pRes[iHist][0] = new TPad(sResPads[0].Data(), "", xPad[0], yPad[0], xPad[1], yPad[1]);
-    pRes[iHist][1] = new TPad(sResPads[1].Data(), "", xPad[2], yPad[2], xPad[3], yPad[3]);
-    pRes[iHist][0] -> SetGrid(grid, grid);
-    pRes[iHist][0] -> SetLogy(logRes);
-    pRes[iHist][1] -> SetGrid(grid, grid);
-    pRes[iHist][1] -> SetLogz(logRes);
-    cRes[iHist]    -> cd();
-    pRes[iHist][0] -> Draw();
-    pRes[iHist][1] -> Draw();
-    pRes[iHist][0] -> cd();
-    hRes1D[iHist]  -> Draw();
-    pRes[iHist][1] -> cd();
-    hRes2D[iHist]  -> Draw("colz");
-    pRes2D[iHist]  -> Draw("same");
-    cRes[iHist]    -> Write();
-    cRes[iHist]    -> Close();
   }
   cout << "    Made plots." << endl;
 
