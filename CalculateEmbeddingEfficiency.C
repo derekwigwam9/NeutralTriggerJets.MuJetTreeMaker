@@ -38,7 +38,7 @@ static const UInt_t  NHotTwr(41);
 static const UInt_t  NBadRuns(45);
 static const UInt_t  NPhiBins(60);
 static const UInt_t  NEtaBins(40);
-static const UInt_t  NPtBins(35);
+static const UInt_t  NPtBins(48);
 static const UInt_t  NLevel(2);
 static const UInt_t  NTrgs(2);
 static const UInt_t  NCut(2);
@@ -486,7 +486,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
 
   // pT binning
   const UInt_t   nPtHistBins         = NPtBins - 1;
-  const Double_t pTbinEdges[NPtBins] = {0., 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1.2, 1.4, 1.6, 1.8, 2., 2.5, 3., 3.5, 4., 5., 6., 7., 8., 10., 12., 14., 16., 18., 20.};
+  const Double_t pTbinEdges[NPtBins] = {0., 0.05, 0.1, 0.11, 0.12, 0.13, 0.14, 0.15, 0.16, 0.17, 0.18, 0.19, 0.2, 0.21, 0.22, 0.23, 0.24, 0.26, 0.28, 0.3, 0.35, 0.4, 0.45, 0.5, 0.6, 0.7, 0.8, 0.9, 1., 1.2, 1.4, 1.6, 1.8, 2., 2.5, 3., 3.5, 4., 5., 6., 7., 8., 10., 12., 14., 16., 18., 20.};
 
   // binning
   const UInt_t   nDf     = 240;
@@ -498,7 +498,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   const Double_t dF[2]   = {-12.56, 12.56};
   const Double_t dH[2]   = {-10., 10.};
   const Double_t dPt[2]  = {-10., 10.};
-  const Double_t pT2d[2] = {-1., 21.};
+  const Double_t pT2d[2] = {0., 22.};
   // create particle histograms
   hPhiTrk[0][0][0] = new TH1D("hPhiBeforeQA_piPar", "", NPhiBins, f[0], f[1]);
   hPhiTrk[0][1][0] = new TH1D("hPhiBeforeQA_gaPar", "", NPhiBins, f[0], f[1]);
@@ -879,40 +879,40 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
             if (isPi0) {
               hPhiTrk[1][0][1] -> Fill(fTrk);
               hPhiForEff[1][0] -> Fill(fMC);
-              hPhiRes[0]      -> Fill(fDiff);
-              hPhiResVsPhi[0] -> Fill(fMC, fDiff);
-              pPhiResVsPhi[0] -> Fill(fMC, fDiff);
+              hPhiRes[0]       -> Fill(fDiff);
+              hPhiResVsPhi[0]  -> Fill(fMC, fDiff);
+              pPhiResVsPhi[0]  -> Fill(fMC, fDiff);
               hEtaTrk[1][0][1] -> Fill(hTrk);
               hEtaForEff[1][0] -> Fill(hMC);
-              hEtaRes[0]      -> Fill(hDiff);
-              hEtaResVsEta[0] -> Fill(hMC, hDiff);
-              pEtaResVsEta[0] -> Fill(hMC, hDiff);
+              hEtaRes[0]       -> Fill(hDiff);
+              hEtaResVsEta[0]  -> Fill(hMC, hDiff);
+              pEtaResVsEta[0]  -> Fill(hMC, hDiff);
               hPtTrk[1][0][1]  -> Fill(pTtrk);
               hPtForEff[1][0]  -> Fill(pTmc);
-              hPtRes[0]       -> Fill(pTdiff);
-              hPtResVsPt[0]   -> Fill(pTmc, pTdiff);
-              pPtResVsPt[0]   -> Fill(pTmc, pTdiff);
+              hPtRes[0]        -> Fill(pTdiff);
+              hPtResVsPt[0]    -> Fill(pTmc, pTdiff);
+              pPtResVsPt[0]    -> Fill(pTmc, pTdiff);
             }
             if (isGam) {
               hPhiTrk[1][1][1] -> Fill(fTrk);
               hPhiForEff[1][1] -> Fill(fMC);
-              hPhiRes[1]      -> Fill(fDiff);
-              hPhiResVsPhi[1] -> Fill(fMC, fDiff);
-              pPhiResVsPhi[1] -> Fill(fMC, fDiff);
+              hPhiRes[1]       -> Fill(fDiff);
+              hPhiResVsPhi[1]  -> Fill(fMC, fDiff);
+              pPhiResVsPhi[1]  -> Fill(fMC, fDiff);
               hEtaTrk[1][1][1] -> Fill(hTrk);
               hEtaForEff[1][1] -> Fill(hMC);
-              hEtaRes[1]      -> Fill(hDiff);
-              hEtaResVsEta[1] -> Fill(hMC, hDiff);
-              pEtaResVsEta[1] -> Fill(hMC, hDiff);
+              hEtaRes[1]       -> Fill(hDiff);
+              hEtaResVsEta[1]  -> Fill(hMC, hDiff);
+              pEtaResVsEta[1]  -> Fill(hMC, hDiff);
               hPtTrk[1][1][1]  -> Fill(pTtrk);
               hPtForEff[1][1]  -> Fill(pTmc);
-              hPtRes[1]       -> Fill(pTdiff);
-              hPtResVsPt[1]   -> Fill(pTmc, pTdiff);
-              pPtResVsPt[1]   -> Fill(pTmc, pTdiff);
+              hPtRes[1]        -> Fill(pTdiff);
+              hPtResVsPt[1]    -> Fill(pTmc, pTdiff);
+              pPtResVsPt[1]    -> Fill(pTmc, pTdiff);
             }
-          }
+          }  // end matching condition
         }  // end detector track loop
-      }  // end matching
+      }  // end matching algorithm
 
       // fill particle histograms
       if (isPi0) {
