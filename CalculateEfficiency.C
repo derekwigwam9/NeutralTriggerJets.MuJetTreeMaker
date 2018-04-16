@@ -18,7 +18,6 @@
 //       files.
 
 
-#include <vector>
 #include <cassert>
 #include <iostream>
 #include "TH1.h"
@@ -533,10 +532,8 @@ void CalculateEfficiency() {
   fOutput -> cd();
   fOutput -> Close();
   for (UInt_t iFile = 0; iFile < NFiles; iFile++) {
-    for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
-      fInput[iFile] -> cd();
-      fInput[iFile] -> Close();
-    }
+    fInput[iFile] -> cd();
+    fInput[iFile] -> Close();
   }
   cout << "  Calculation finished!\n" << endl;
 
