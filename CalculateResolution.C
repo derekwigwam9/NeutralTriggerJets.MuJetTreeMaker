@@ -18,10 +18,11 @@
 //       files.
 
 
-#include <vector>
 #include <cassert>
 #include <iostream>
 #include "TH1.h"
+#include "TH2.h"
+#include "TF1.h"
 #include "TPad.h"
 #include "TROOT.h"
 #include "TFile.h"
@@ -29,21 +30,22 @@
 #include "TSystem.h"
 #include "TString.h"
 #include "TCanvas.h"
+#include "TProfile.h"
+#include "TPaveText.h"
+#include "TObjArray.h"
 #include "TDirectory.h"
 
 using namespace std;
 
 
 // global constants
-static const UInt_t NPhiBins(61);
-static const UInt_t NEtaBins(41);
-static const UInt_t NPtBins(48);
 static const UInt_t NEmbed(10);
 static const UInt_t NFiles(10);
 static const UInt_t NLevel(2);
 static const UInt_t NHist(3);
-static const UInt_t NCut(2);
+static const UInt_t NFits(3);
 static const UInt_t NVal(2);
+static const UInt_t NDec(3);
 static const UInt_t NTrg(2);
 
 
@@ -57,13 +59,13 @@ void CalculateResolution() {
 
   // io parameters
   const UInt_t  maker(1);
-  const TString sOutput("pp200r9embed.resolution.d16m4y2018.root");
+  const TString sOutput("pp200r9embed.resolutionWithWidths.d16m4y2018.root");
   const TString sInput[NFiles] = {"../../MuDstMatching/output/merged/pt2.matchWithMc.root", "../../MuDstMatching/output/merged/pt3.matchWithMc.root", "../../MuDstMatching/output/merged/pt4.matchWithMc.root", "../../MuDstMatching/output/merged/pt5.matchWithMc.root", "../../MuDstMatching/output/merged/pt7.matchWithMc.root", "../../MuDstMatching/output/merged/pt9.matchWithMc.root", "../../MuDstMatching/output/merged/pt11.matchWithMc.root", "../../MuDstMatching/output/merged/pt15.matchWithMc.root", "../../MuDstMatching/output/merged/pt25.matchWithMc.root", "../../MuDstMatching/output/merged/pt35.matchWithMc.root"};
 
   // parameters for individual files
   const TString sDate("d16m4y2018");
   const TString sSystem("pp200r9");
-  const TString sOutLabel("resolution");
+  const TString sOutLabel("resolutionWithWidths");
   const TString sTree[NLevel]     = {"McTracks", "GfmtoDst_mu"};
   const TString sBinLabel[NFiles] = {"pt2", "pt3", "pt4", "pt5", "pt7", "pt9", "pt11", "pt15", "pt25", "pt35"};
 
@@ -228,7 +230,6 @@ void CalculateResolution() {
   const Double_t etaTrk[2]   = {hResVsEta[0] -> GetXaxis() -> GetBinLowEdge(1), hResVsEta[0] -> GetXaxis() -> GetBinLowEdge(nEtaTrkBins + 1)};
   const Double_t ptRes[2]    = {hPtRes[0] -> GetBinLowEdge(0), hPtRes[0] -> GetBinLowEdge(nPtResBins + 1)};
   const Double_t ptTrk[2]    = {hResVsPt[0] -> GetXaxis() -> GetBinLowEdge(1), hResVsPt[0] -> GetXaxis() -> GetBinLowEdge(nPtTrkBins + 1)};
-  cout << "CHECK: pTx = (" << ptTrk[0] << ", " << ptTrk[1] << ")" << endl;
 
   // names
   const TString sResBase1D[NHist] = {"hPhiRes", "hEtaRes", "hPtRes"};
@@ -321,6 +322,7 @@ void CalculateResolution() {
     hRes2D[iHist] -> GetYaxis() -> SetTitleFont(fTxt);
     hRes2D[iHist] -> GetYaxis() -> CenterTitle(fCnt);
     hRes2D[iHist] -> GetYaxis() -> SetLabelSize(fLab);
+    hRes2D[iHist] -> GetZaxis() -> SetLabelSize(fLab);
     pRes2D[iHist] -> SetTitle(sTitleR2D[iHist]);
     pRes2D[iHist] -> SetTitleFont(fTxt);
     pRes2D[iHist] -> GetXaxis() -> SetTitle(sTitleR2X[iHist].Data());
@@ -372,6 +374,129 @@ void CalculateResolution() {
   cout << "    Made plots." << endl;
 
 
+  // fit widths for pT
+  const UInt_t   cut(0);
+  const TString  sFit("[0]+[1]*x");
+  const TString  sParm("_2");
+  const TString  sOptGaus("QNRG5");
+  const TString  sOptLine("NR");
+  const TString  sNameFit("fPtWidths");
+  const Double_t start(0.);
+  const Double_t stop(20.);
+
+  TF1  *fWidths;
+  TH1D *hWidths;
+  {
+    // declare pointers
+    TF1       *fGauss;
+    TObjArray *aParameters;
+
+    // create result name
+    TString sResult(sResBase2D[2]);
+    sResult.Append(sParm.Data());
+
+    // do fitting
+    const UInt_t iStart = hRes2D[2] -> GetXaxis() -> FindBin(start);
+    const UInt_t iStop  = hRes2D[2] -> GetXaxis() -> FindBin(stop);
+    hRes2D[2] -> FitSlicesY(fGauss, iStart, iStop, cut, sOptGaus.Data(), aParameters);
+    hWidths   =  (TH1D*) gDirectory -> Get(sResult.Data()) -> Clone();
+  }
+  fWidths = new TF1(sName.Data(), sFit.Data(), start, stop);
+  hWidths -> Fit(fWidths, sOptLine.Data());
+
+  // set width styles
+  const UInt_t   fMarW(8);
+  const UInt_t   fColW(856);
+  const UInt_t   fColF(896);
+  const Float_t  fLabW(0.02);
+  const TString  sNameHist("hPtWidths");
+  const TString  sTitleW("Resolution width, #varsigma(p_{T}^{MC})");
+  const TString  sTitleWY("#varsigma(p_{T}^{MC}) = #varsigma_{0} #oplus #varsigma_{1} #upoint p_{T}^{MC}");
+  hWidths -> SetName(sNameHist.Data());
+  hWidths -> SetLineColor(fColW);
+  hWidths -> SetMarkerColor(fColW);
+  hWidths -> SetMarkerStyle(fMarW);
+  hWidths -> SetTitle(sTitleW.Data());
+  hWidths -> SetTitleFont(fTxt);
+  hWidths -> GetXaxis() -> SetTitleFont(fTxt);
+  hWidths -> GetXaxis() -> CenterTitle(fCnt);
+  hWidths -> GetXaxis() -> SetTitleOffset(fOffsetX);
+  hWidths -> GetXaxis() -> SetLabelSize(fLabW);
+  hWidths -> GetYaxis() -> SetTitle(sTitleWY.Data());
+  hWidths -> GetYaxis() -> SetTitleFont(fTxt);
+  hWidths -> GetYaxis() -> CenterTitle(fCnt);
+  hWidths -> GetYaxis() -> SetLabelSize(fLabW);
+  fWidths -> SetLineColor(fColF);
+
+
+  // create text
+  const UInt_t  fColT(1);
+  const UInt_t  fStyBa(0);
+  const UInt_t  fColBa(0);
+  const UInt_t  fColBo(1);
+  const UInt_t  fAlign(12);
+  const Float_t xyTxt[4] = {0.1, 0.1, 0.3, 0.3};
+  const TString sSystem("pp-collisions, #sqrt{s} = 200 GeV");
+  const TString sTrigger("Embedding (2-to-2 hard QCD)");
+  const TString sFitInfo("fit(p_{T}^{MC}) = #varsigma_{0} + #varsigma_{1} #upoint p_{T}^{MC}");
+
+  TPaveText *pWidths = new TPaveText(xyTxt[0], xyTxt[1], xyTxt[2], xyTxt[3], "NDC NB");
+  pWidths -> SetFillStyle(fStyBa);
+  pWidths -> SetFillColor(fColBa);
+  pWidths -> SetLineColor(fColBo);
+  pWidths -> SetTextFont(fTxt);
+  pWidths -> SetTextColor(fColT);
+  pWidths -> SetTextAlign(fAlign);
+  {
+    const Double_t wConst[NVal]  = {fWidths -> GetParameter(0), fWidths -> GetParError(0)};
+    const Double_t wLinear[NVal] = {fWidths -> GetParameter(1), fWidths -> GetParError(1)};
+
+    TString sConstRaw[NVal]  = {"", ""};
+    TString sLinearRaw[NVal] = {"", ""};
+    sConstRaw[0]  += wConst[0];
+    sConstRaw[1]  += wConst[1];
+    sLinearRaw[0] += wLinear[0];
+    sLinearRaw[1] += wLinear[1];
+
+    // determine decimal place
+    const UInt_t nCraw[NVal] = {sConstRaw[0].First("."), sConstRaw[1].First(".")};
+    const UInt_t nLraw[NVal] = {sLinearRaw[0].First("."), sLinearRaw[1].First(".")};
+    const UInt_t nCtxt[NVal] = {(nCraw[0] + NDec) + 1, (nCraw[1] + NDec) + 3};
+    const UInt_t nLtxt[NVal] = {(nLraw[0] + NDec) + 2, (nLraw[1] + NDec) + 4};
+
+    // trim text
+    TString sConstTxt("#varsigma_{0} = ");
+    TString sLinearTxt("#varsigma_{1} = ");
+    sConstTxt.Append(sConstRaw[0].Data(), nCtxt[0]);
+    sConstTxt.Append(" #pm ");
+    sConstTxt.Append(sConstRaw[1].Data(), nCtxt[1]);
+    sLinearTxt.Append(sLinearRaw[0].Data(), nLtxt[0]);
+    sLinearTxt.Append(" #pm ");
+    sLinearTxt.Append(sLinearRaw[1].Data(), nLtxt[1]);
+
+    // add text to TPave
+    pWidths -> AddText(sSystem.Data());
+    pWidths -> AddText(sTrigger.Data());
+    pWidths -> AddText(sFitInfo.Data());
+    pWidths -> AddText(sConstTxt.Data());
+    pWidths -> AddText(sLinearTxt.Data());
+  }
+
+
+  // plot fit result
+  const UInt_t  widthW(750);
+  const UInt_t  heightW(750);
+  const TString sCanvasW("cPtWidths");
+
+  TCanvas *cWidths = new TCanvas(sCanvasW.Data(), "", widthW, heightW);
+  cWidths -> SetGrid(grid, grid);
+  hWidths -> Draw();
+  fWidths -> Draw("same");
+  pWidths -> Draw();
+  cWidths -> Write();
+  cWidths -> Close();
+
+
   // save histograms
   fOutput -> cd();
   for (UInt_t iHist = 0; iHist < NHist; iHist++) {
@@ -379,16 +504,15 @@ void CalculateResolution() {
     hRes2D[iHist] -> Write();
     pRes2D[iHist] -> Write();
   }
+  hWidths -> Write();
   cout << "    Saved histograms." << endl;
 
   // close files
   fOutput -> cd();
   fOutput -> Close();
   for (UInt_t iFile = 0; iFile < NFiles; iFile++) {
-    for (UInt_t iLevel = 0; iLevel < NLevel; iLevel++) {
-      fInput[iFile] -> cd();
-      fInput[iFile] -> Close();
-    }
+    fInput[iFile] -> cd();
+    fInput[iFile] -> Close();
   }
   cout << "  Calculation finished!\n" << endl;
 
