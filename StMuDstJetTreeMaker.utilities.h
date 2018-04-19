@@ -216,70 +216,65 @@ void StMuDstJetTreeMaker::InitializeHistograms() {
   // event QA
   _hEvtQA[0][0] = new TH1D("hNumTrgP", "No. of triggers, #pi^{0}", nTrg, trg1, trg2);
   _hEvtQA[0][1] = new TH1D("hNumTrgG", "No. of triggers, #gamma^{rich}", nTrg, trg1, trg2);
+  _hEvtQA[0][2] = new TH1D("hNumTrgH", "No. of triggers, h^{#pm}", nTrg, trg1, trg2);
   _hEvtQA[1][0] = new TH1D("hTrgTspP", "Trigger TSP, #pi^{0}", nTsp, tsp1, tsp2);
   _hEvtQA[1][1] = new TH1D("hTrgTspG", "Trigger TSP, #gamma^{rich}", nTsp, tsp1, tsp2);
+  _hEvtQA[1][2] = new TH1D("hTrgTspH", "Trigger TSP, h^{#pm}", nTsp, tsp1, tsp2);
   _hEvtQA[2][0] = new TH1D("hNumTrkP", "No. of primary tracks, #pi^{0}", nTrk, trk1, trk2);
   _hEvtQA[2][1] = new TH1D("hNumTrkG", "No. of primary tracks, #gamma^{rich}", nTrk, trk1, trk2);
+  _hEvtQA[2][2] = new TH1D("hNumTrkH", "No. of primary tracks, h^{#pm}", nTrk, trk1, trk2);
   _hEvtQA[3][0] = new TH1D("hTrgEneP", "Trigger energy, #pi^{0}", nPt, pT1, pT2);
   _hEvtQA[3][1] = new TH1D("hTrgEneG", "Trigger energy, #gamma^{rich}", nPt, pT1, pT2);
+  _hEvtQA[3][2] = new TH1D("hTrgEneH", "Trigger energy, h^{#pm}", nPt, pT1, pT2);
   // track QA
   _hTrkQA[0][0] = new TH1D("hTrkPtP", "Primary track p_{T}, #pi^{0}", nPt, pT1, pT2);
   _hTrkQA[0][1] = new TH1D("hTrkPtG", "Primary track p_{T}, #gamma^{rich}", nPt, pT1, pT2);
+  _hTrkQA[0][2] = new TH1D("hTrkPtH", "Primary track p_{T}, h^{#pm}", nPt, pT1, pT2);
   _hTrkQA[1][0] = new TH1D("hTrkDfP", "Primary track #Delta#varphi, #pi^{0}", nDf, dF1, dF2);
   _hTrkQA[1][1] = new TH1D("hTrkDfG", "Primary track #Delta#varphi, #gamma^{rich}", nDf, dF1, dF2);
+  _hTrkQA[1][2] = new TH1D("hTrkDfH", "Primary track #Delta#varphi, h^{#pm}", nDf, dF1, dF2);
   _hTrkQA[2][0] = new TH1D("hTrkEtaP", "Primary track #eta, #pi^{0}", nH, h1, h2);
   _hTrkQA[2][1] = new TH1D("hTrkEtaG", "Primary track #eta, #gamma^{rich}", nH, h1, h2);
+  _hTrkQA[2][2] = new TH1D("hTrkEtaH", "Primary track #eta, h^{#pm}", nH, h1, h2);
   _hTrkQA[3][0] = new TH1D("hTrkEneP", "Primary track energy, #pi^{0}", nPt, pT1, pT2);
   _hTrkQA[3][1] = new TH1D("hTrkEneG", "Primary track energy, #gamma^{rich}", nPt, pT1, pT2);
+  _hTrkQA[3][2] = new TH1D("hTrkEneH", "Primary track energy, h^{#pm}", nPt, pT1, pT2);
   // tower QA
   _hTwrQA[0][0] = new TH1D("hTwrPtP", "Tower p_{T}, #pi^{0}", nPt, pT1, pT2);
   _hTwrQA[0][1] = new TH1D("hTwrPtG", "Tower p_{T}, #gamma^{rich}", nPt, pT1, pT2);
+  _hTwrQA[0][2] = new TH1D("hTwrPtH", "Tower p_{T}, h^{#pm}", nPt, pT1, pT2);
   _hTwrQA[1][0] = new TH1D("hTwrDfP", "Tower #Delta#varphi, #pi^{0}", nDf , dF1, dF2);
   _hTwrQA[1][1] = new TH1D("hTwrDfG", "Tower #Delta#varphi, #gamma^{rich}", nDf , dF1, dF2);
+  _hTwrQA[1][2] = new TH1D("hTwrDfH", "Tower #Delta#varphi, h^{#pm}", nDf , dF1, dF2);
   _hTwrQA[2][0] = new TH1D("hTwrEtaP", "Tower #eta, #pi^{0}", nH, h1, h2);
   _hTwrQA[2][1] = new TH1D("hTwrEtaG", "Tower #eta, #gamma^{rich}", nH, h1, h2);
+  _hTwrQA[2][2] = new TH1D("hTwrEtaH", "Tower #eta, h^{#pm}", nH, h1, h2);
   _hTwrQA[3][0] = new TH1D("hTwrEneP", "Tower energy, #pi^{0}", nPt, pT1, pT2);
   _hTwrQA[3][1] = new TH1D("hTwrEneG", "Tower energy, #gamma^{rich}", nPt, pT1, pT2);
+  _hTwrQA[3][2] = new TH1D("hTwrEneH", "Tower energy, h^{#pm}", nPt, pT1, pT2);
   // jet QA
   _hJetQA[0][0] = new TH1D("hJetPtP", "Jet p_{T}, #pi^{0}", nPt, pT1, pT2);
   _hJetQA[0][1] = new TH1D("hJetPtG", "Jet p_{T}, #gamma^{rich}", nPt, pT1, pT2);
+  _hJetQA[0][2] = new TH1D("hJetPtH", "Jet p_{T}, h^{#pm}", nPt, pT1, pT2);
   _hJetQA[1][0] = new TH1D("hJetDfP", "Jet #Delta#varphi, #pi^{0}", nDf, dF1, dF2);
   _hJetQA[1][1] = new TH1D("hJetDfG", "Jet #Delta#varphi, #gamma^{rich}", nDf, dF1, dF2);
+  _hJetQA[1][2] = new TH1D("hJetDfH", "Jet #Delta#varphi, h^{#pm}", nDf, dF1, dF2);
   _hJetQA[2][0] = new TH1D("hJetEtaP", "Jet #eta, #pi^{0}", nH, h1, h2);
   _hJetQA[2][1] = new TH1D("hJetEtaG", "Jet #eta, #gamma^{rich}", nH, h1, h2);
+  _hJetQA[2][2] = new TH1D("hJetEtaH", "Jet #eta, h^{#pm}", nH, h1, h2);
   _hJetQA[3][0] = new TH1D("hJetEneP", "Jet energy, #pi^{0}", nPt, pT1, pT2);
   _hJetQA[3][1] = new TH1D("hJetEneG", "Jet energy, #gamma^{rich}", nPt, pT1, pT2);
+  _hJetQA[3][2] = new TH1D("hJetEneH", "Jet energy, h^{#pm}", nPt, pT1, pT2);
   // errors
   for (UInt_t iHist = 0; iHist < NHistQA; iHist++) {
     for (UInt_t iTrg = 0; iTrg < NTrgTypes; iTrg++) {
+      _hEvtQA[iHist][iTrg] -> Sumw2();
       _hTrkQA[iHist][iTrg] -> Sumw2();
       _hTwrQA[iHist][iTrg] -> Sumw2();
       _hJetQA[iHist][iTrg] -> Sumw2();
     }
   }
   PrintInfo(9);
-
-  // TEST [11.05.2017]
-  _hTrkPt[0][0]     = new TH1D("hTrkPtP_all", "Track p_{T}, #pi^{0}: all", nPt, pT1, pT2);
-  _hTrkPt[0][1]     = new TH1D("hTrkPtP_rec", "Track p_{T}, #pi^{0}: |#Delta#varphi - #pi| < #pi/2", nPt, pT1, pT2);
-  _hTrkPt[1][0]     = new TH1D("hTrkPtG_all", "Track p_{T}, #gamma^{rich}: all", nPt, pT1, pT2);
-  _hTrkPt[1][1]     = new TH1D("hTrkPtG_rec", "Track p_{T}, #gamma^{rich}: |#Delta#varphi - #pi| < #pi/2", nPt, pT1, pT2);
-  _hTwrPtRaw[0][0]  = new TH1D("hTwrPtRawP_all", "Tower p_{T} (raw), #pi^{0}: all", nPt, pT1, pT2);
-  _hTwrPtRaw[0][1]  = new TH1D("hTwrPtRawP_rec", "Tower p_{T} (raw), #pi^{0}: |#Delta#varphi - #pi| < #pi/2", nPt, pT1, pT2);
-  _hTwrPtRaw[1][0]  = new TH1D("hTwrPtRawG_all", "Tower p_{T} (raw), #gamma^{rich}: all", nPt, pT1, pT2);
-  _hTwrPtRaw[1][1]  = new TH1D("hTwrPtRawG_rec", "Tower p_{T} (raw), #gamma^{rich}: |#Delta#varphi - #pi| < #pi/2", nPt, pT1, pT2);
-  _hTwrPtCorr[0][0] = new TH1D("hTwrPtCorrP_all", "Tower p_{T} (corr), #pi^{0}: all", nPt, pT1, pT2);
-  _hTwrPtCorr[0][1] = new TH1D("hTwrPtCorrP_rec", "Tower p_{T} (corr), #pi^{0}: |#Delta#varphi - #pi| < #pi/2", nPt, pT1, pT2);
-  _hTwrPtCorr[1][0] = new TH1D("hTwrPtCorrG_all", "Tower p_{T} (corr), #gamma^{rich}: all", nPt, pT1, pT2);
-  _hTwrPtCorr[1][1] = new TH1D("hTwrPtCorrG_rec", "Tower p_{T} (corr), #gamma^{rich}: |#Delta#varphi - #pi| < #pi/2", nPt, pT1, pT2);
-  for (UInt_t iTrg = 0; iTrg < NTrgTypes; iTrg++) {
-    _hTrkPt[iTrg][0]     -> Sumw2();
-    _hTrkPt[iTrg][1]     -> Sumw2();
-    _hTwrPtRaw[iTrg][0]  -> Sumw2();
-    _hTwrPtRaw[iTrg][1]  -> Sumw2();
-    _hTwrPtCorr[iTrg][0] -> Sumw2();
-    _hTwrPtCorr[iTrg][1] -> Sumw2();
-  }
 
 }  // end 'InitializeHistograms()'
 
@@ -430,7 +425,7 @@ Bool_t StMuDstJetTreeMaker::IsGoodEvent(const Double_t rVtx, const Double_t zVtx
 
 
 
-Bool_t StMuDstJetTreeMaker::IsGoodTrigger(const Int_t adc, const Double_t eEta, const Double_t ePhi, const Double_t pProj, const Double_t etaTrg, const Double_t eTtrg, const Double_t tsp) {
+Bool_t StMuDstJetTreeMaker::IsGoodPionTrigger(const Int_t adc, const Double_t eEta, const Double_t ePhi, const Double_t pProj, const Double_t etaTrg, const Double_t eTtrg, const Double_t tsp) {
 
   const Bool_t isInAdcCut  = (adc <= _adcMax);
   const Bool_t isInStrpCut = ((eEta >= _eEtaMin) && (ePhi >= _ePhiMin));
@@ -444,6 +439,18 @@ Bool_t StMuDstJetTreeMaker::IsGoodTrigger(const Int_t adc, const Double_t eEta, 
   return isGoodTrg;
 
 }  // end 'IsGoodTrigger(Int_t, Double_t, Double_t, Double_t, Double_t, Double_t, Double_t)'
+
+
+
+Bool_t StMuDstJetTreeMaker::IsGoodHadronTrigger(const Double_t etaTrg, const Double_t pTtrg, const Double_t nSigPi, const Double_t nSigK, const Double_t nSigP, const Double_t nSigE) {
+
+  const Bool_t isInEtaCut = (abs(etaTrg) < _etaTrgMax);
+  const Bool_t isInPtCut  = ((pTtrg > _eTtrgMin) && (pTtrg < _eTtrgMax));
+  const Bool_t isHadron   = IsHadron(nSigPi, nSigK, nSigP, nSigE);
+  const Bool_t isGoodTrg  = (isInEtaCut && isInPtCut && isHadron);
+  return isGoodTrg;
+
+}  // end 'IsGoodHadronTrigger(Double_t, Double_t, Double_t, Double_t, Double_t, Double_t)'
 
 
 
@@ -487,7 +494,20 @@ Bool_t StMuDstJetTreeMaker::IsGamma(const Double_t tsp) {
   const Bool_t isGam = ((tsp > _tspGamMin) && (tsp < _tspGamMax));
   return isGam;
 
-} // end 'IsGamma(Double_t)'
+}  // end 'IsGamma(Double_t)'
+
+
+
+Bool_t StMuDstJetTreeMaker::IsHadron(const Double_t nSigPi, const Double_t nSigK, const Double_t nSigP, const Double_t nSigE) {
+
+  const Bool_t isPion     = (abs(nSigPi) < NSigCut);
+  const Bool_t isKaon     = (abs(nSigK)  < NSigCut);
+  const Bool_t isProton   = (abs(nSigP)  < NSigCut);
+  const Bool_t isElectron = (abs(nSigE)  < NSigCut);
+  const Bool_t isHadron   = ((isPion || isKaon || isProton) && !isElectron);
+  return isHadron;
+
+}  // end 'IsHadron(Double_t, Double_t, Double_t, Double_t)'
 
 
 
@@ -525,10 +545,6 @@ Long64_t StMuDstJetTreeMaker::GetEntry(const Long64_t entry) {
 
 Double_t StMuDstJetTreeMaker::GetHadronicCorrection(const Double_t eTwr, const vector<Double_t> pMatchedTrks) {
 
-  // % hadronic correction
-  const Double_t percent = 1.;
-
-  // momentum sum and corr. energy
   Double_t eSum  = 0.;
   Double_t eCorr = 0.;
 
@@ -539,7 +555,8 @@ Double_t StMuDstJetTreeMaker::GetHadronicCorrection(const Double_t eTwr, const v
   }
 
   // subtract summed momentum
-  const Double_t corr = eTwr - (percent * eSum);
+  const Double_t percent = 0.5;
+  const Double_t corr    = eTwr - (percent * eSum);
   if (corr < 0.)
     eCorr = 0.;
   else

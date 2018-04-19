@@ -27,12 +27,13 @@ using namespace std;
 
 // global constants
 static const UInt_t   NHistQA    = 4;
-static const UInt_t   NTrgTypes  = 2;
+static const UInt_t   NTrgTypes  = 3;
 static const UInt_t   NBadRun    = 45;
 static const UInt_t   NHotTwr    = 302;
 static const UInt_t   NTrkMax    = 5000;
 static const UInt_t   NTwrMax    = 5000;
 static const UInt_t   NMatchMax  = 10;
+static const UInt_t   NSigCut    = 3;
 static const Double_t MassPi0    = 0.140;
 static const Double_t RadiusBemc = 225.405;
 
@@ -54,11 +55,6 @@ class StMuDstJetTreeMaker {
     TFile   *_fOutput;
     TString  _sInput;
     TString  _sOutput;
-
-    // TEST [11.05.2017]
-    TH1D *_hTrkPt[NTrgTypes][2];
-    TH1D *_hTwrPtRaw[NTrgTypes][2];
-    TH1D *_hTwrPtCorr[NTrgTypes][2];
 
     // event parameters
     Int_t    _adcMax;
@@ -212,8 +208,8 @@ class StMuDstJetTreeMaker {
     Int_t    _PrimaryTrackArray_;
     UInt_t   _PrimaryTrackArray_fUniqueID[NTrkMax];
     UInt_t   _PrimaryTrackArray_fBits[NTrkMax];
-    Double_t _PrimaryTrackArray_nHitsFit[NTrkMax];
-    Double_t _PrimaryTrackArray_nHitsPoss[NTrkMax];
+    Int_t    _PrimaryTrackArray_nHitsFit[NTrkMax];
+    Int_t    _PrimaryTrackArray_nHitsPoss[NTrkMax];
     Int_t    _PrimaryTrackArray_trackFlag[NTrkMax];
     Double_t _PrimaryTrackArray_pZ[NTrkMax];
     Double_t _PrimaryTrackArray_pX[NTrkMax];
@@ -400,14 +396,18 @@ class StMuDstJetTreeMaker {
     void           InitializeOutputTree(TTree *tree);
     void           InitializeHistograms();
     void           PrintInfo(const UInt_t code, const UInt_t nEvts=0, const UInt_t iEvt=0);
+    void           UsePionTriggeredEvents();
+    void           UseHadronTriggeredEvents();
     Bool_t         IsGoodRunID(const UInt_t runID);
     Bool_t         IsGoodTowerID(const UInt_t twrID);
     Bool_t         IsGoodEvent(const Double_t rVtx, const Double_t zVtx);
-    Bool_t         IsGoodTrigger(const Int_t adc, const Double_t eEta, const Double_t ePhi, const Double_t pProj, const Double_t etaTrg, const Double_t eTtrg, const Double_t tsp);
+    Bool_t         IsGoodPionTrigger(const Int_t adc, const Double_t eEta, const Double_t ePhi, const Double_t pProj, const Double_t etaTrg, const Double_t eTtrg, const Double_t tsp);
+    Bool_t         IsGoodHadronTrigger(const Double_t etaTrg, const Double_t pTtrg, const Double_t nSigPi, const Double_t nSigK, const Double_t nSigP, const Double_t nSigE);
     Bool_t         IsGoodTrack(const UInt_t nFit, const Double_t rFit, const Double_t dca, const Double_t etaTrk, const Double_t pTtrk);
     Bool_t         IsGoodTower(const Double_t etaTwr, const Double_t eTwr, const Double_t eCorr);
     Bool_t         IsPi0(const Double_t tsp);
     Bool_t         IsGamma(const Double_t tsp);
+    Bool_t         IsHadron(const Double_t nSigPi, const Double_t nSigK, const Double_t nSigP, const Double_t nSigE);
     Long64_t       LoadTree(const Long64_t entry);
     Long64_t       GetEntry(const Long64_t entry);
     Double_t       GetHadronicCorrection(const Double_t eTwr, const vector<Double_t> pMatchedTrks);
@@ -428,7 +428,7 @@ class StMuDstJetTreeMaker {
     void SetTowerParameters(const Double_t etaTwrMax, const Double_t eTwrMin, const Double_t eTwrMax, const Double_t eCorrMin, const Double_t eCorrMax);
     void SetJetParameters(const UInt_t type, const UInt_t nRepeat, const UInt_t nRemove, const Double_t rJet, const Double_t aGhost, const Double_t pTjetMin, const Double_t etaGhostMax, const Double_t etaJetMax, const Double_t etaBkgdMax);
     void Init();
-    void Make();
+    void Make(const UInt_t trgFlag);
     void Finish();
 
   ClassDef(StMuDstJetTreeMaker, 1)
