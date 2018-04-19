@@ -98,6 +98,7 @@ class StMuDstJetTreeMaker {
     Int_t    _NJets;
     Int_t    _RunId;
     Double_t _Refmult;
+    Double_t _PartonicPt;
     Double_t _TSP;
     Double_t _TrgEta;
     Double_t _TrgPhi;
@@ -421,14 +422,14 @@ class StMuDstJetTreeMaker {
     virtual ~StMuDstJetTreeMaker();
 
     // public methods
-    void SetInputAndOutputFiles(const TString& sInput, const TString& sOuput);
+    void SetInputAndOutputFiles(const TString& sInput, const TString& sOuput, const Double_t pTparton=0.);
     void SetEventParameters(const Double_t rVtxMax, const Double_t zVtxMax);
     void SetTriggerParameters(const Int_t adcMax, const Double_t eEtaMin, const Double_t ePhiMin, const Double_t pProjMax, const Double_t etaTrgMax, const Double_t eTtrgMin, const Double_t eTtrgMax, const Double_t tspPi0Min, const Double_t tspPi0Max, const Double_t tspGamMin, const Double_t tspGamMax);
     void SetTrackParameters(const UInt_t nFitMin, const Double_t rFitMin, const Double_t dcaMax, const Double_t etaTrkMax, const Double_t pTtrkMin, const Double_t pTtrkMax);
     void SetTowerParameters(const Double_t etaTwrMax, const Double_t eTwrMin, const Double_t eTwrMax, const Double_t eCorrMin, const Double_t eCorrMax);
     void SetJetParameters(const UInt_t type, const UInt_t nRepeat, const UInt_t nRemove, const Double_t rJet, const Double_t aGhost, const Double_t pTjetMin, const Double_t etaGhostMax, const Double_t etaJetMax, const Double_t etaBkgdMax);
     void Init();
-    void Make(const UInt_t trgFlag);
+    void Make(const UInt_t trgFlag=0);
     void Finish();
 
   ClassDef(StMuDstJetTreeMaker, 1)

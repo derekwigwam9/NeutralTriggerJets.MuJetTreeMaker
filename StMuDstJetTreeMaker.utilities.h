@@ -164,6 +164,7 @@ void StMuDstJetTreeMaker::InitializeOutputTree(TTree *tree) {
   _tJet -> Branch("Refmult", &_Refmult, "Refmult/D");
   _tJet -> Branch("NJets", &_NJets, "NJets/I");
   _tJet -> Branch("RunId", &_RunId, "RunId/I");
+  _tJet -> Branch("PartonicPt", &_PartonicPt, "PartonicPt/D");
   _tJet -> Branch("TSP", &_TSP, "TSP/D");
   _tJet -> Branch("TrgEta", &_TrgEta, "TrgEta/D");
   _tJet -> Branch("TrgPhi", &_TrgPhi, "TrgPhi/D");
@@ -288,8 +289,9 @@ void StMuDstJetTreeMaker::PrintInfo(const UInt_t code, const UInt_t nEvts, const
       break;
     case 1:
       cout << "    Input and output set.\n"
-           << "      input  -- " << _sInput.Data() << "\n"
-           << "      output -- " << _sOutput.Data()
+           << "      input    -- " << _sInput.Data() << "\n"
+           << "      output   -- " << _sOutput.Data() << "\n"
+           << "      pTparton -- " << _PartonicPt
            << endl;
       break;
     case 2:

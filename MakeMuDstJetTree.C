@@ -7,6 +7,9 @@
 //
 // NOTE: type = 0, makes charged jets
 //       type = 1, makes full jets.
+//
+// NOTE: trigger = 0, uses pi0 triggers
+//       trigger = 1, uses h+- triggers.
 
 
 #include "TString.h"
@@ -19,10 +22,12 @@ class StMuDstJetTreeMaker;
 
 
 // i/o parameters
-static const TString sInput("../../ThirdJetMaker/output/merged/pt35.thirdJetMaker.root");
-static const TString sOuput("pp200r12pt35u.r04rm1hc100full.d6m1y2018.root");
+static const TString  sInput("../../MuDstMatching/output/merged/pt35rff.matchWithMc.root");
+static const TString  sOuput("jetMaker.check.root");
+static const Double_t pTparton(35.);
 // jet parameters
 static const UInt_t   type(1);
+static const UInt_t   trigger(1);
 static const UInt_t   nRepeat(1);
 static const UInt_t   nRemove(1);
 static const Double_t rJet(0.4);
@@ -70,7 +75,7 @@ void MakeMuDstJetTree(const Bool_t isInBatchMode=false) {
 
   StMuDstJetTreeMaker *jetMaker = new StMuDstJetTreeMaker(isInBatchMode);
   // set parameters
-  jetMaker -> SetInputAndOutputFiles(sInput.Data(), sOuput.Data());
+  jetMaker -> SetInputAndOutputFiles(sInput.Data(), sOuput.Data(), pTparton);
   jetMaker -> SetEventParameters(rVtxMax, zVtxMax);
   jetMaker -> SetTriggerParameters(adcMax, eEtaMin, ePhiMin, pProjMax, etaTrgMax, eTtrgMin, eTtrgMax, tspPi0Min, tspPi0Max, tspGamMin, tspGamMax);
   jetMaker -> SetTrackParameters(nFitMin, rFitMin, dcaMax, etaTrkMax, pTtrkMin, pTtrkMax);
@@ -78,7 +83,7 @@ void MakeMuDstJetTree(const Bool_t isInBatchMode=false) {
   jetMaker -> SetJetParameters(type, nRepeat, nRemove, rJet, aGhost, pTjetMin, etaGhostMax, etaJetMax, etaBkgdMax);
   // find jets
   jetMaker -> Init();
-  jetMaker -> Make();
+  jetMaker -> Make(trigger);
   jetMaker -> Finish();
 
 }

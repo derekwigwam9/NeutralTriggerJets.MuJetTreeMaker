@@ -25,10 +25,11 @@ ClassImp(StMuDstJetTreeMaker);
 
 
 
-void StMuDstJetTreeMaker::SetInputAndOutputFiles(const TString& sInput, const TString& sOutput) {
+void StMuDstJetTreeMaker::SetInputAndOutputFiles(const TString& sInput, const TString& sOutput, const Double_t pTparton) {
 
-  _sInput  = sInput;
-  _sOutput = sOutput;
+  _sInput     = sInput;
+  _sOutput    = sOutput;
+  _PartonicPt = pTparton;
   PrintInfo(1);
 
 }  // end 'SetInputAndOutput(TString&, TString&)'
@@ -110,7 +111,7 @@ void StMuDstJetTreeMaker::SetJetParameters(const UInt_t type, const UInt_t nRepe
 
 void StMuDstJetTreeMaker::Init() {
 
-  _fOutput = new TFile(_sOutput.Data(), "recreate");
+  _fOutput    = new TFile(_sOutput.Data(), "recreate");
   if (_tFemto == 0) {
     TFile *fInput = (TFile*) gROOT -> GetListOfFiles() -> FindObject(_sInput.Data());
     if (!fInput || !(fInput -> IsOpen())) {
