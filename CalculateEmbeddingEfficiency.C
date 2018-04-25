@@ -21,6 +21,7 @@
 #include "TMath.h"
 #include "TLine.h"
 #include "TString.h"
+#include "TNtuple.h"
 #include "TLegend.h"
 #include "TCanvas.h"
 #include "TProfile.h"
@@ -45,7 +46,7 @@ static const UInt_t  NCut(2);
 static const UInt_t  NVal(2);
 static const TString sTreePar("McTracks");
 static const TString sTreeDet("GfmtoDst_mu");
-static const TString sInputDefault("../../MuDstMatching/output/merged/pt35.matchWithMc.root");
+static const TString sInputDefault("../../MuDstMatching/output/merged/pt35rff.matchWithMc.root");
 static const TString sOutputDefault("pp200r9pt35.default.root");
 
 
@@ -67,6 +68,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   const Double_t tspGam[2] = {0.2, 0.6};
 
   // track parameters
+  const Int_t    minQaTruth(50);
   const UInt_t   nFitMin(15);
   const Double_t rFitMin(0.52);
   const Double_t dcaMax(1.);
@@ -492,13 +494,13 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   const UInt_t   nDf     = 240;
   const UInt_t   nDh     = 400;
   const UInt_t   nDpt    = 200;
-  const UInt_t   nPt2d   = 220;
+  const UInt_t   nPt2d   = 300;
   const Double_t f[2]    = {-3.15, 3.15};
   const Double_t h[2]    = {-1., 1.};
   const Double_t dF[2]   = {-12.56, 12.56};
   const Double_t dH[2]   = {-10., 10.};
   const Double_t dPt[2]  = {-10., 10.};
-  const Double_t pT2d[2] = {0., 22.};
+  const Double_t pT2d[2] = {0., 30.};
   // create particle histograms
   hPhiTrk[0][0][0] = new TH1D("hPhiBeforeQA_piPar", "", NPhiBins, f[0], f[1]);
   hPhiTrk[0][1][0] = new TH1D("hPhiBeforeQA_gaPar", "", NPhiBins, f[0], f[1]);
@@ -602,6 +604,12 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
   pPtResVsPt[0]   = new TProfile("pPtResVsPt_pi", "", nPt2d, pT2d[0], pT2d[1], "S");
   pPtResVsPt[1]   = new TProfile("pPtResVsPt_ga", "", nPt2d, pT2d[0], pT2d[1], "S");
   cout << "    Made profiles." << endl;
+
+  // make tuples
+  fOutput -> cd();
+  TNtuple *nTrkAll   = new TNtuple("nTrkAll", "", "mcIdTruth:mcIdVtx:mcVtxEnd:mcIdGeant:mcEta:mcChrg:mcPt:trkIdTruth:trkQaTruth:trkNumFit:trkNumPoss:trkDca:trkEta:trkPt");
+  TNtuple *nTrkMatch = new TNtuple("nTrkMatch", "", "mcIdTruth:mcIdVtx:mcVtxEnd:mcIdGeant:mcEta:mcChrg:mcPt:trkIdTruth:trkQaTruth:trkNumFit:trkNumPoss:trkDca:trkEta:trkPt");
+  cout << "    Made NTuples." << endl;
 
 
   const UInt_t nParEvts = tPar -> GetEntriesFast();
@@ -791,6 +799,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
       // track info
       const Int_t    mcId  = mcIdTrk   -> at(iMC);
       const Int_t    mcPID = mcIdGeant -> at(iMC);
+      const Int_t    mcIV  = mcIdVx    -> at(iMC);
       const Int_t    mcIE  = mcIdVxEnd -> at(iMC);
       const Double_t qMC   = mcCharge  -> at(iMC);
       const Double_t fMC   = mcPhi     -> at(iMC);
@@ -838,6 +847,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
 
           // track info
           const Int_t    idTruth = (Int_t) PrimaryTrackArray_tofSigElectron[iTrk];
+          const Int_t    qaTruth = (Int_t) PrimaryTrackArray_tofSigPion[iTrk];
           const UInt_t   nFit    = PrimaryTrackArray_nHitsFit[iTrk];
           const UInt_t   nPoss   = PrimaryTrackArray_nHitsPoss[iTrk];
           const Double_t rFit    = (Double_t) nFit / (Double_t) nPoss;
@@ -848,8 +858,9 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
           const Double_t pTtrk   = PrimaryTrackArray_pT[iTrk];
 
           // fill detector histograms
-          const Bool_t matchesMC = (idTruth == mcId);
-          if (matchesMC) {
+          const Bool_t matchesMC   = (idTruth == mcId);
+          const Bool_t isGoodMatch = (qaTruth > minQaTruth);
+          if (matchesMC && isGoodMatch) {
             if (isPi0) {
               hPhiTrk[1][0][0] -> Fill(fTrk);
               hEtaTrk[1][0][0] -> Fill(hTrk);
@@ -861,6 +872,8 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
               hPtTrk[1][1][0]  -> Fill(pTtrk);
             }
           }
+          nTrkAll -> Fill(mcId, mcIV, mcIE, mcPID, hMC, qMC, pTmc, idTruth, qaTruth, nFit, nPoss, dca, hTrk, pTtrk);
+
 
           // track cuts
           const Bool_t isInFitCut    = (nFit > nFitMin);
@@ -871,8 +884,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
           const Bool_t isInPtCut     = ((pTtrk > pTtrkMin) && (pTtrk < pTtrkMax));
           if (!isInFitCut || !isInRatioCut || !isInDcaCut || !isInEtaTrkCut || !isInPtCut) continue;
 
-          // fill detector histograms
-          if (matchesMC) {
+          if (matchesMC && isGoodMatch) {
             const Double_t fDiff  = (fMC - fTrk) / fMC;
             const Double_t hDiff  = (hMC - hTrk) / hMC;
             const Double_t pTdiff = (pTmc - pTtrk) / pTmc;
@@ -910,6 +922,7 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
               hPtResVsPt[1]    -> Fill(pTmc, pTdiff);
               pPtResVsPt[1]    -> Fill(pTmc, pTdiff);
             }
+            nTrkMatch -> Fill(mcId, mcIV, mcIE, mcPID, hMC, qMC, pTmc, idTruth, qaTruth, nFit, nPoss, dca, hTrk, pTtrk);
           }  // end matching condition
         }  // end detector track loop
       }  // end matching algorithm
@@ -1393,7 +1406,9 @@ void CalculateEmbeddingEfficiency(UInt_t &nPi0Trg, UInt_t &nGamTrg, const Bool_t
     pEtaResVsEta[iTrg] -> Write();
     pPtResVsPt[iTrg]   -> Write();
   }  // end trigger loop
-  fOutput -> cd();
+  fOutput   -> cd();
+  nTrkAll   -> Write();
+  nTrkMatch -> Write();
   cout << "    Made directories." << endl;
 
 
