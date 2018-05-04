@@ -21,7 +21,7 @@ using namespace std;
 
 
 // global constatns
-static const UInt_t NBins(9);
+static const UInt_t NBins(81);
 static const UInt_t NFiles(10);
 static const UInt_t NEmbed(10);
 
@@ -35,14 +35,14 @@ void SigmaCalculator() {
 
 
   // io parameters
-  const TString sOutput("test.root");
-  const TString sInput[NFiles] = {"pp200r9pt2.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt3.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt4.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt5.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt7.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt9.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt11.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt15.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt25.resNoPQaCuts.noQaTruth50.d30m4y2018.root", "pp200r9pt35.resNoPQaCuts.noQaTruth50.d30m4y2018.root"};
+  const TString sOutput("pp200r9rff.divisionTEST.tinyTinyBins.d4m5y2018.root");
+  const TString sInput[NFiles] = {"pp200r9pt2.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt3.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt4.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt5.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt7.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt9.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt11.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt15.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt25.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt35.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root"};
 
   // constants
   const TString  sHist("hPtTrk");
   const TString  sTuple("nTrkMatch");
-  const Float_t  loEnds[NBins]   = {0, 2, 4, 6, 8, 10, 12, 14, 16};
-  const Float_t  hiEnds[NBins]   = {2, 4, 6, 8, 10, 12, 14, 16, 20};
+  const Float_t  loEnds[NBins]   = {0.0, 0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0, 6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4, 7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8, 9.0, 9.2, 9.4, 9.6, 9.8, 10.0, 10.2, 10.4, 10.6, 10.8, 11.0, 11.2, 11.4, 11.6, 11.8, 12.0, 12.2, 12.4, 12.6, 12.8, 13.0, 13.2, 13.4, 13.6, 13.8, 14.0, 14.2, 14.4, 14.6, 14.8, 15.0, 15.2, 15.4, 15.6, 15.8, 16.0};
+  const Float_t  hiEnds[NBins]   = {0.2, 0.4, 0.6, 0.8, 1.0, 1.2, 1.4, 1.6, 1.8, 2.0, 2.2, 2.4, 2.6, 2.8, 3.0, 3.2, 3.4, 3.6, 3.8, 4.0, 4.2, 4.4, 4.6, 4.8, 5.0, 5.2, 5.4, 5.6, 5.8, 6.0, 6.2, 6.4, 6.6, 6.8, 7.0, 7.2, 7.4, 7.6, 7.8, 8.0, 8.2, 8.4, 8.6, 8.8, 9.0, 9.2, 9.4, 9.6, 9.8, 10.0, 10.2, 10.4, 10.6, 10.8, 11.0, 11.2, 11.4, 11.6, 11.8, 12.0, 12.2, 12.4, 12.6, 12.8, 13.0, 13.2, 13.4, 13.6, 13.8, 14.0, 14.2, 14.4, 14.6, 14.8, 15.0, 15.2, 15.4, 15.6, 15.8, 16.0, 16.2};
   const Double_t weights[NEmbed] = {1.0, 3.501425e-01, 1.395103e-01, 1.326444e-01, 2.801546e-02, 1.031377e-02, 8.210314e-03, 1.985107e-03, 8.054588e-05, 1.449037e-05};
 
 
@@ -61,7 +61,7 @@ void SigmaCalculator() {
   TH1D *hPtTrk[NBins];
   for (UInt_t iBin = 0; iBin < NBins; iBin++) {
     TString sName(sHist.Data());
-    sName += loEnds[iBin];
+    sName += (Int_t) (loEnds[iBin] * 10.);
     hPtTrk[iBin] = new TH1D(sName.Data(), "", nPtBins, pTbins[0], pTbins[1]);
     hPtTrk[iBin] -> Sumw2();
   }
@@ -202,11 +202,19 @@ void SigmaCalculator() {
   Double_t sigErr[NBins];
   for (UInt_t iBin = 0; iBin < NBins; iBin++) {
     hPtTrk[iBin] -> Fit("gaus", "Q0");
-    muVal[iBin]  = hPtTrk[iBin] -> GetFunction("gaus") -> GetParameter(1);
-    muErr[iBin]  = hPtTrk[iBin] -> GetFunction("gaus") -> GetParError(1);
-    sigVal[iBin] = hPtTrk[iBin] -> GetFunction("gaus") -> GetParameter(2);
-    sigErr[iBin] = hPtTrk[iBin] -> GetFunction("gaus") -> GetParError(2);
-    hPtTrk[iBin] -> GetFunction("gaus") -> ResetBit((Int_t) 1<<9);
+    if (hPtTrk[iBin] -> GetFunction("gaus")) {
+      muVal[iBin]  = hPtTrk[iBin] -> GetFunction("gaus") -> GetParameter(1);
+      muErr[iBin]  = hPtTrk[iBin] -> GetFunction("gaus") -> GetParError(1);
+      sigVal[iBin] = hPtTrk[iBin] -> GetFunction("gaus") -> GetParameter(2);
+      sigErr[iBin] = hPtTrk[iBin] -> GetFunction("gaus") -> GetParError(2);
+      hPtTrk[iBin] -> GetFunction("gaus") -> ResetBit((Int_t) 1<<9);
+    }
+    else {
+      muVal[iBin]  = loEnds[iBin] + ((hiEnds[iBin] - loEnds[iBin]) / 2.);
+      muErr[iBin]  = 0.;
+      sigVal[iBin] = 0.;
+      sigErr[iBin] = 0.;
+    }
   }
   fOutput -> cd();
   cout << "    Fit histograms." << endl;
