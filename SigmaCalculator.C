@@ -14,16 +14,19 @@
 #include "TString.h"
 #include "TNtuple.h"
 #include "TCanvas.h"
+#include "TLegend.h"
 #include "TPaveText.h"
 #include "TGraphErrors.h"
 
 using namespace std;
 
 
-// global constatns
-static const UInt_t NBins(81);
-static const UInt_t NFiles(10);
-static const UInt_t NEmbed(10);
+// global constants
+static const UInt_t  NBins(81);
+static const UInt_t  NDraw(6);
+static const UInt_t  NFiles(10);
+static const UInt_t  NEmbed(10);
+static const TString SFuncComp("-0.026+0.020*x+0.003*x*x");
 
 
 
@@ -35,8 +38,8 @@ void SigmaCalculator() {
 
 
   // io parameters
-  const TString sOutput("pp200r9rff.divisionTEST.tinyTinyBins.d4m5y2018.root");
-  const TString sInput[NFiles] = {"pp200r9pt2.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt3.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt4.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt5.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt7.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt9.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt11.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt15.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt25.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "pp200r9pt35.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root"};
+  const TString sOutput("pp200r9rff.sigmaPtDiff.withPtPlots.d7m5y2018.root");
+  const TString sInput[NFiles] = {"output/ResolutionStudy/pp200r9pt2.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt3.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt4.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt5.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt7.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt9.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt11.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt15.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt25.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root", "output/ResolutionStudy/pp200r9pt35.resQaCutsButNoPtRecoOrQaTruthWithRFF.d3m5y2018.root"};
 
   // constants
   const TString  sHist("hPtTrk");
@@ -55,8 +58,10 @@ void SigmaCalculator() {
   cout << "    Opened output." << endl;
 
   // create histograms
-  const UInt_t   nPtBins(300);
-  const Double_t pTbins[2] = {-5., 25.};
+  //const UInt_t   nPtBins(300);
+  const UInt_t   nPtBins(500);
+  //const Double_t pTbins[2] = {-5., 25.};
+  const Double_t pTbins[2] = {-25., 25.};
 
   TH1D *hPtTrk[NBins];
   for (UInt_t iBin = 0; iBin < NBins; iBin++) {
@@ -183,7 +188,8 @@ void SigmaCalculator() {
           break;
         }
       }  // end bin loop
-      if (isInBin) hPtTrk[bin] -> Fill(trkPt, weights[iWeight]);
+      //if (isInBin) hPtTrk[bin] -> Fill(trkPt, weights[iWeight]);
+      if (isInBin) hPtTrk[bin] -> Fill(mcPt - trkPt, weights[iWeight]);
 
     }  // end track loop
   }  // end file loop
@@ -196,32 +202,38 @@ void SigmaCalculator() {
 
 
   // fit histograms
-  Double_t muVal[NBins];
-  Double_t muErr[NBins];
+  Double_t mcVal[NBins];
+  Double_t mcErr[NBins];
   Double_t sigVal[NBins];
   Double_t sigErr[NBins];
   for (UInt_t iBin = 0; iBin < NBins; iBin++) {
+    // normalize histogram
+    const Double_t nEntries = (Double_t) hPtTrk[iBin] -> GetEntries();
+    if (nEntries > 0.) hPtTrk[iBin] -> Scale(1. / nEntries);
+
+    // do fitting
     hPtTrk[iBin] -> Fit("gaus", "Q0");
     if (hPtTrk[iBin] -> GetFunction("gaus")) {
-      muVal[iBin]  = hPtTrk[iBin] -> GetFunction("gaus") -> GetParameter(1);
-      muErr[iBin]  = hPtTrk[iBin] -> GetFunction("gaus") -> GetParError(1);
+      mcVal[iBin]  = loEnds[iBin] + ((hiEnds[iBin] - loEnds[iBin]) / 2.);
+      mcErr[iBin]  = 0.;
       sigVal[iBin] = hPtTrk[iBin] -> GetFunction("gaus") -> GetParameter(2);
       sigErr[iBin] = hPtTrk[iBin] -> GetFunction("gaus") -> GetParError(2);
       hPtTrk[iBin] -> GetFunction("gaus") -> ResetBit((Int_t) 1<<9);
     }
     else {
-      muVal[iBin]  = loEnds[iBin] + ((hiEnds[iBin] - loEnds[iBin]) / 2.);
-      muErr[iBin]  = 0.;
+      mcVal[iBin]  = loEnds[iBin] + ((hiEnds[iBin] - loEnds[iBin]) / 2.);
+      mcErr[iBin]  = 0.;
       sigVal[iBin] = 0.;
       sigErr[iBin] = 0.;
     }
   }
   fOutput -> cd();
-  cout << "    Fit histograms." << endl;
+  cout << "    Fit (and normalized) histograms." << endl;
 
   // create graph
   const UInt_t  cSig(898);
   const UInt_t  cFit(858);
+  const UInt_t  cComp(818);
   const UInt_t  lSig(2);
   const UInt_t  lFit(1);
   const UInt_t  mSig(8);
@@ -231,11 +243,12 @@ void SigmaCalculator() {
   const Float_t fOffX(1.);
   const Float_t fOffY(1.1);
   const TString sNamSig("gSigma");
-  const TString sTtlSig("Resolution #sigma(#LTp_{T}^{reco}#GT)");
-  const TString sTtlSigX("#LTp_{T}^{reco}#GT");
+  //const TString sTtlSig("Resolution #sigma(p_{T}^{reco} | p_{T}^{MC})");
+  const TString sTtlSig("Resolution #sigma(#Deltap_{T} | p_{T}^{MC}), #Deltap_{T} = p_{T}^{MC} - p_{T}^{reco}");
+  const TString sTtlSigX("#LTp_{T}^{MC}#GT");
   const TString sTtlSigY("#sigma");
 
-  TGraphErrors *gSigma = new TGraphErrors(NBins, muVal, sigVal, muErr, sigErr);
+  TGraphErrors *gSigma = new TGraphErrors(NBins, mcVal, sigVal, mcErr, sigErr);
   gSigma -> SetLineColor(cSig);
   gSigma -> SetLineStyle(lSig);
   gSigma -> SetMarkerColor(cSig);
@@ -254,26 +267,133 @@ void SigmaCalculator() {
   gSigma -> GetYaxis() -> SetLabelSize(fLab);
   cout << "    Made graph." << endl;
 
+
+  // select histograms to draw
+  const UInt_t  cDraw[NDraw]   = {794, 814, 834, 854, 874, 894};
+  const UInt_t  mDraw[NDraw]   = {4, 4, 4, 4, 4, 4};
+  const Float_t pTdraw[NDraw]  = {0.9, 3.9, 6.9, 9.9, 12.9, 15.9};
+  const TString sPtDraw[NDraw] = {"0.9 GeV/c", "3.9 GeV/c", "6.9 GeV/c", "9.9 GeV/c", "12.9 GeV/c", "15.9 GeV/c"};
+
+  UInt_t iSelect(0);
+  UInt_t iDraw[NDraw];
+  for (UInt_t iBin = 0; iBin < NBins; iBin++) {
+    const Bool_t isInBin = ((pTdraw[iSelect] >= loEnds[iBin]) && (pTdraw[iSelect] <= hiEnds[iBin]));
+    if (isInBin) {
+      iDraw[iSelect] = iBin;
+      iSelect++;
+    }
+    if (iSelect == NDraw) break;
+  }
+  cout << "    Selected histograms." << endl;
+
+  // set styles
+  const UInt_t  cLegPt(0);
+  const UInt_t  lWeight(2);
+  //const TString sTtlPt("Matched p_{T}^{reco}");
+  const TString sTtlPt("Matched #Deltap_{T}");
+  //const TString sTtlPtX("p_{T}^{reco}");
+  const TString sTtlPtX("#Deltap_{T} = p_{T}^{MC} - p_{T}^{reco}");
+  const TString sTtlPtY("arb.");
+  const Float_t xyLegPt[4] = {0.3, 0.1, 0.5, 0.3};
+
+  TLegend *lPtTrk = new TLegend(xyLegPt[0], xyLegPt[1], xyLegPt[2], xyLegPt[3], "p_{T}^{MC} #pm 0.1 GeV/c");
+  lPtTrk -> SetFillColor(cLegPt);
+  lPtTrk -> SetLineColor(cLegPt);
+  lPtTrk -> SetTextFont(fTxt);
+  for (UInt_t iHist = 0; iHist < NDraw; iHist++) {
+    // set histogram styles
+    hPtTrk[iDraw[iHist]] -> SetLineColor(cDraw[iHist]);
+    hPtTrk[iDraw[iHist]] -> SetMarkerColor(cDraw[iHist]);
+    hPtTrk[iDraw[iHist]] -> SetMarkerStyle(mDraw[iHist]);
+    hPtTrk[iDraw[iHist]] -> SetTitle(sTtlPt.Data());
+    hPtTrk[iDraw[iHist]] -> SetTitleFont(fTxt);
+    hPtTrk[iDraw[iHist]] -> GetXaxis() -> SetTitle(sTtlPtX.Data());
+    hPtTrk[iDraw[iHist]] -> GetXaxis() -> SetTitleFont(fTxt);
+    hPtTrk[iDraw[iHist]] -> GetXaxis() -> SetTitleOffset(fOffX);
+    hPtTrk[iDraw[iHist]] -> GetXaxis() -> CenterTitle(fCnt);
+    hPtTrk[iDraw[iHist]] -> GetXaxis() -> SetLabelSize(fLab);
+    hPtTrk[iDraw[iHist]] -> GetYaxis() -> SetTitle(sTtlPtY.Data());
+    hPtTrk[iDraw[iHist]] -> GetYaxis() -> SetTitleFont(fTxt);
+    hPtTrk[iDraw[iHist]] -> GetYaxis() -> SetTitleOffset(fOffY);
+    hPtTrk[iDraw[iHist]] -> GetYaxis() -> CenterTitle(fCnt);
+    hPtTrk[iDraw[iHist]] -> GetYaxis() -> SetLabelSize(fLab);
+
+    // set function color
+    if (hPtTrk[iDraw[iHist]] -> GetFunction("gaus")) {
+      hPtTrk[iDraw[iHist]] -> GetFunction("gaus") -> SetLineColor(cDraw[iHist]);
+      hPtTrk[iDraw[iHist]] -> GetFunction("gaus") -> SetLineWidth(lWeight);
+    }
+
+    // add to legend
+    lPtTrk -> AddEntry(hPtTrk[iDraw[iHist]], sPtDraw[iHist].Data());
+  }
+  cout << "    Set styles." << endl;
+
+
   // fit graph
-  const Float_t fitRange[2] = {muVal[0], muVal[NBins - 2]};
+  const UInt_t  cLegSig(0);
+  const TString sLegFit("Fit");
+  const TString sLegComp("Comparison");
+  const Float_t xComp[2]    = {0., 20.};
+  const Float_t fitRange[2] = {mcVal[0], mcVal[NBins - 2]};
+  const Float_t xyLegSig[4] = {0.3, 0.1, 0.5, 0.3};
   gSigma -> Fit("pol2", "0", "", fitRange[0], fitRange[1]);
   gSigma -> GetFunction("pol2") -> SetLineColor(cFit);
   gSigma -> GetFunction("pol2") -> SetLineStyle(lFit);
+  gSigma -> GetFunction("pol2") -> SetLineWidth(lWeight);
   gSigma -> GetFunction("pol2") -> ResetBit((Int_t) 1<<9);
 
+  // make comparison
+  TF1 *fComp = new TF1("fComp", SFuncComp.Data(), xComp[0], xComp[1]);
+  fComp -> SetLineColor(cComp);
+  fComp -> SetLineStyle(lFit);
+  fComp -> SetLineWidth(lWeight);
 
-  // make plot
+  // make legend
+  TLegend *lSigma = new TLegend(xyLegSig[0], xyLegSig[1], xyLegSig[2], xyLegSig[3]);
+  lSigma -> SetFillColor(cLegSig);
+  lSigma -> SetLineColor(cLegSig);
+  lSigma -> SetTextFont(fTxt);
+  lSigma -> AddEntry(gSigma -> GetFunction("pol2"), sLegFit.Data());
+  lSigma -> AddEntry(fComp, sLegComp.Data());
+
+
+  // make plots
   const UInt_t  wSig(750);
+  const UInt_t  wPt(750);
   const UInt_t  hSig(750);
+  const UInt_t  hPt(750);
   const UInt_t  grid(0);
+  const UInt_t  log(1);
   const TString sCanSig("cSigma");
+  const TString sCanPt("cPtTrk");
 
   TCanvas *cSigma = new TCanvas(sCanSig.Data(), "", wSig, hSig);
   cSigma -> SetGrid(grid, grid);
+  cSigma -> SetLogy(log);
   gSigma -> Draw("ALP");
+  fComp  -> Draw("same");
+  lSigma -> Draw();
   cSigma -> Write();
   cSigma -> Close();
-  cout << "    Made plot." << endl;
+
+  TCanvas *cPtTrk = new TCanvas(sCanPt.Data(), "", wPt, hPt);
+  cPtTrk -> SetGrid(grid, grid);
+  cPtTrk -> SetLogy(log);
+  for (UInt_t iHist = 0; iHist < NDraw; iHist++) {
+    //if (iHist == 0)
+      //hPtTrk[iDraw[iHist]] -> Draw();
+    //else
+      //hPtTrk[iDraw[iHist]] -> Draw("same");
+    if (iHist == 0)
+      hPtTrk[iDraw[iHist]] -> Draw("hist");
+    else
+      hPtTrk[iDraw[iHist]] -> Draw("same hist");
+  }
+  lPtTrk -> Draw();
+  cPtTrk -> Write();
+  cPtTrk -> Close();
+  cout << "    Made plots." << endl;
 
 
   // save histograms
