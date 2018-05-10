@@ -17,12 +17,12 @@
 using namespace std;
 
 
-static const Bool_t   DoTrgNorm = true;
+static const Bool_t   DoTrgNorm = false;
 static const Double_t PiValue   = TMath::Pi();
 
 // filepaths
-static const TString iPath("pp200r9pt35rff.et920vz55had.r03rm1chrg.root");
-static const TString oPath("pp200r9pt35rff.CHECK.et920vz55had.r03a02rm1chrg.root");
+static const TString iPath("pp200r9pt35ff.et920vz55had.r03rm1chrg.root");
+static const TString oPath("pp200r9pt35ff.plots.et920vz55had.r03a02rm1chrg.root");
 
 // parameters
 static const Double_t MaxVz     = 55.;
@@ -175,7 +175,7 @@ void ReadJetTreeDst(Bool_t inBatchMode=false) {
   const Int_t    nA  = 500;
   const Int_t    nH  = 100;
   const Int_t    nDf = 360;
-  const Int_t    nPt = 120.;
+  const Int_t    nPt = 240;
   const Double_t m1  = 0.;
   const Double_t m2  = 200.;
   const Double_t n1  = 0.;
@@ -215,9 +215,9 @@ void ReadJetTreeDst(Bool_t inBatchMode=false) {
   hJetArea[1]        = new TH1D("hJetAreaG", "Recoil jet area, #gamma^{rich} trigger; A_{jet}; (1/N_{trg}) dN_{jet}/dA_{jet}", nA, a1, a2);
   hJetEta[1]         = new TH1D("hJetEtaG", "Recoil jet #eta, #gamma^{rich} trigger; #eta; (1/N_{trg}) dN_{jet}/d#eta", nH, h1, h2);
   hAllDeltaPhi[1]    = new TH1D("hAllDeltaPhiG", "All jet #Delta#varphi, #gamma^{rich} trigger; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
-  hBinDeltaPhi[1][0] = new TH1D("hBinDeltaPhiG_pT02", "#Delta#varphi of h^{#pm} jets with p_{T}^{jet}#in(0.2, 1) GeV/c, #gamma^{rich}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
-  hBinDeltaPhi[1][1] = new TH1D("hBinDeltaPhiG_pT1", "#Delta#varphi of h^{#pm} jets with p_{T}^{jet}#in(1, 5) GeV/c, #gamma^{rich}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
-  hBinDeltaPhi[1][2] = new TH1D("hBinDeltaPhiG_pT5", "#Delta#varphi of h^{#pm} jets with p_{T}^{jet}>5 GeV/c, #gamma^{rich}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
+  hBinDeltaPhi[1][0] = new TH1D("hBinDeltaPhiG_pT02", "#Delta#varphi of #gamma^{rich} jets with p_{T}^{jet}#in(0.2, 1) GeV/c, #gamma^{rich}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
+  hBinDeltaPhi[1][1] = new TH1D("hBinDeltaPhiG_pT1", "#Delta#varphi of #gamma^{rich} jets with p_{T}^{jet}#in(1, 5) GeV/c, #gamma^{rich}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
+  hBinDeltaPhi[1][2] = new TH1D("hBinDeltaPhiG_pT5", "#Delta#varphi of #gamma^{rich} jets with p_{T}^{jet}>5 GeV/c, #gamma^{rich}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
   hJetDeltaPhi[1]    = new TH1D("hJetDeltaPhiG", "Recoil jet #Delta#varphi, #gamma^{rich} trigger; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
   hAllPtRaw[1]       = new TH1D("hAllPtRawG", "All jet p_{T}^{raw}, #gamma^{rich} trigger; p_{T}^{raw}; (1/N_{trg}) dN_{jet}/dp_{T}^{raw}", nPt, pT1, pT2);
   hJetPtRaw[1]       = new TH1D("hJetPtRawG", "Recoil jet p_{T}^{raw}, #gamma^{rich} trigger; p_{T}^{raw}; (1/N_{trg}) dN_{jet}/dp_{T}^{raw}", nPt, pT1, pT2);
@@ -232,9 +232,9 @@ void ReadJetTreeDst(Bool_t inBatchMode=false) {
   hJetArea[2]        = new TH1D("hJetAreaH", "Recoil jet area, h^{#pm}; A_{jet}; (1/N_{trg}) dN_{jet}/dA_{jet}", nA, a1, a2);
   hJetEta[2]         = new TH1D("hJetEtaH", "Recoil jet #eta, h^{#pm}; #eta; (1/N_{trg}) dN_{jet}/d#eta", nH, h1, h2);
   hAllDeltaPhi[2]    = new TH1D("hAllDeltaPhiH", "All jet #Delta#varphi, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
-  hBinDeltaPhi[2][0] = new TH1D("hBinDeltaPhiH_pT02", "#Delta#varphi of h^{#pm} jets with p_{T}^{jet}#in(0.2, 1) GeV/c, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
-  hBinDeltaPhi[2][1] = new TH1D("hBinDeltaPhiH_pT1", "#Delta#varphi of h^{#pm} jets with p_{T}^{jet}#in(1, 5) GeV/c, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
-  hBinDeltaPhi[2][2] = new TH1D("hBinDeltaPhiH_pT5", "#Delta#varphi of h^{#pm} jets with p_{T}^{jet}>5 GeV/c, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
+  hBinDeltaPhi[2][0] = new TH1D("hBinDeltaPhiH_pT02", "#Delta#varphi of all jets with p_{T}^{jet}#in(0.2, 1) GeV/c, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
+  hBinDeltaPhi[2][1] = new TH1D("hBinDeltaPhiH_pT1", "#Delta#varphi of all jets with p_{T}^{jet}#in(1, 5) GeV/c, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
+  hBinDeltaPhi[2][2] = new TH1D("hBinDeltaPhiH_pT5", "#Delta#varphi of all jets with p_{T}^{jet}>5 GeV/c, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
   hJetDeltaPhi[2]    = new TH1D("hJetDeltaPhiH", "Recoil jet #Delta#varphi, h^{#pm}; #Delta#varphi; (1/N_{trg}) dN_{jet}/d#Delta#varphi", nDf, dF1, dF2);
   hAllPtRaw[2]       = new TH1D("hAllPtRawH", "All jet p_{T}^{raw}, h^{#pm}; p_{T}^{raw}; (1/N_{trg}) dN_{jet}/dp_{T}^{raw}", nPt, pT1, pT2);
   hJetPtRaw[2]       = new TH1D("hJetPtRawH", "Recoil jet p_{T}^{raw}, h^{#pm}; p_{T}^{raw}; (1/N_{trg}) dN_{jet}/dp_{T}^{raw}", nPt, pT1, pT2);
