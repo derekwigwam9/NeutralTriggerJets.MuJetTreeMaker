@@ -24,7 +24,7 @@ class StMuDstJetTreeMaker;
 // i/o parameters
 static const TString  sInDefault("../../MuDstMatching/output/merged/pt4ff.matchWithMc.root");
 static const TString  sOutDefault("pp200r9pt4ff.et920vz55had.r03rm1chrg.root");
-static const Double_t pTparton(4.);
+static const Double_t pTdefault(4.);
 // jet parameters
 static const UInt_t   type(0);
 static const UInt_t   trigger(1);
@@ -38,7 +38,7 @@ static const Double_t etaJetMax(1.0 - rJet);
 static const Double_t etaBkgdMax(1.0);
 
 
-void MakeMuDstJetTree(const TString sInput=sInDefault, const TString sOutput=sOutDefault, const Bool_t isInBatchMode=false) {
+void MakeMuDstJetTree(const Double_t pTparton=pTdefault, const TString sInput=sInDefault, const TString sOutput=sOutDefault, const Bool_t isInBatchMode=false) {
 
   gSystem -> Load("/opt/star/Xsl64_gcc482/lib/libfastjet.so");
   gSystem -> Load("/opt/star/Xsl64_gcc482/lib/libfastjettools.so");
@@ -51,9 +51,12 @@ void MakeMuDstJetTree(const TString sInput=sInDefault, const TString sOutput=sOu
   const Double_t eEtaMin(0.5);
   const Double_t ePhiMin(0.5);
   const Double_t pProjMax(3.);
-  const Double_t etaTrgMax(0.9);
-  const Double_t eTtrgMin(9.);
-  const Double_t eTtrgMax(20.);
+  //const Double_t etaTrgMax(0.9);
+  const Double_t etaTrgMax(2.);
+  //const Double_t eTtrgMin(9.);
+  //const Double_t eTtrgMax(20.);
+  const Double_t eTtrgMin(0.);
+  const Double_t eTtrgMax(100.);
   const Double_t tspPi0Min(0.);
   const Double_t tspPi0Max(0.08);
   const Double_t tspGamMin(0.2);
