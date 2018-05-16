@@ -6,4 +6,7 @@
 # Use this to run 'MakeMuDstJetTree.C'
 # in batch mode.
 
-root -b -q MakeMuDstJetTree.C\("true"\)
+input="\"../../MuDstMatching/output/merged/pt4ff.matchWithMc.root\""
+output="\"pp200r9pt4ff.et920vz55had.r03rm1chrg.root\""
+
+root -b -q MakeMuDstJetTree.C\($input, $output, "true"\)

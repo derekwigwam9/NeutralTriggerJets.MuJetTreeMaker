@@ -22,15 +22,15 @@ class StMuDstJetTreeMaker;
 
 
 // i/o parameters
-static const TString  sInput("../../MuDstMatching/output/merged/pt35rff.matchWithMc.root");
-static const TString  sOuput("jetMaker.check.root");
-static const Double_t pTparton(35.);
+static const TString  sInDefault("../../MuDstMatching/output/merged/pt4ff.matchWithMc.root");
+static const TString  sOutDefault("pp200r9pt4ff.et920vz55had.r03rm1chrg.root");
+static const Double_t pTparton(4.);
 // jet parameters
-static const UInt_t   type(1);
+static const UInt_t   type(0);
 static const UInt_t   trigger(1);
 static const UInt_t   nRepeat(1);
 static const UInt_t   nRemove(1);
-static const Double_t rJet(0.4);
+static const Double_t rJet(0.3);
 static const Double_t aGhost(0.01);
 static const Double_t pTjetMin(0.2);
 static const Double_t etaGhostMax(1.0 + rJet);
@@ -38,7 +38,7 @@ static const Double_t etaJetMax(1.0 - rJet);
 static const Double_t etaBkgdMax(1.0);
 
 
-void MakeMuDstJetTree(const Bool_t isInBatchMode=false) {
+void MakeMuDstJetTree(const TString sInput=sInDefault, const TString sOutput=sOutDefault, const Bool_t isInBatchMode=false) {
 
   gSystem -> Load("/opt/star/Xsl64_gcc482/lib/libfastjet.so");
   gSystem -> Load("/opt/star/Xsl64_gcc482/lib/libfastjettools.so");
@@ -75,7 +75,7 @@ void MakeMuDstJetTree(const Bool_t isInBatchMode=false) {
 
   StMuDstJetTreeMaker *jetMaker = new StMuDstJetTreeMaker(isInBatchMode);
   // set parameters
-  jetMaker -> SetInputAndOutputFiles(sInput.Data(), sOuput.Data(), pTparton);
+  jetMaker -> SetInputAndOutputFiles(sInput.Data(), sOutput.Data(), pTparton);
   jetMaker -> SetEventParameters(rVtxMax, zVtxMax);
   jetMaker -> SetTriggerParameters(adcMax, eEtaMin, ePhiMin, pProjMax, etaTrgMax, eTtrgMin, eTtrgMax, tspPi0Min, tspPi0Max, tspGamMin, tspGamMax);
   jetMaker -> SetTrackParameters(nFitMin, rFitMin, dcaMax, etaTrkMax, pTtrkMin, pTtrkMax);
