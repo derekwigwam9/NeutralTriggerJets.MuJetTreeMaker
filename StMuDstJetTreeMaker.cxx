@@ -113,6 +113,7 @@ void StMuDstJetTreeMaker::AdjustTrackEfficiency(const Bool_t effAdjust, const Fl
 
   _adjustTrackEff = effAdjust;
   _effAdjust      = adjustment;
+  _random         = new TRandom();
   PrintInfo(17);
 
 }  // 'AdjustTrackEfficiency(Bool_t, Float_t)'
@@ -611,6 +612,13 @@ void StMuDstJetTreeMaker::UseHadronTriggeredEvents() {
       // track cuts
       const Bool_t isGoodTrk = IsGoodTrack(nFit, rFit, dca, hTrk, pTtrk);
       if (!isGoodTrk) continue;
+
+      // adjust tracking efficiency (if need be)
+      if (_adjustTrackEff) {
+        const Float_t rando = _random -> Uniform(0., 1.);
+        const Bool_t  pass  = (rando > _effAdjust);
+        if (!pass) continue;
+      } 
 
 
       _hTrkQA[0][2] -> Fill(pTtrk);
