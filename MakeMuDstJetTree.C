@@ -22,20 +22,25 @@ class StMuDstJetTreeMaker;
 
 
 // i/o parameters
-static const TString  sInDefault("../../MuDstMatching/output/merged/pt4ff.matchWithMc.root");
-static const TString  sOutDefault("pp200r9pt4ff.et920vz55had.r03rm1chrg.root");
-static const Double_t pTdefault(4.);
+static const TString  sInDefault("../../MuDstMatching/output/merged/pt25rff.matchWithMc.root");
+static const TString  sOutDefault("pp200r9pt25rff.detectorEffTestM5.r02rm1chrg.root");
+static const Double_t pTdefault(25.);
 // jet parameters
 static const UInt_t   type(0);
 static const UInt_t   trigger(1);
 static const UInt_t   nRepeat(1);
 static const UInt_t   nRemove(1);
-static const Double_t rJet(0.3);
+static const Double_t rJet(0.2);
 static const Double_t aGhost(0.01);
 static const Double_t pTjetMin(0.2);
 static const Double_t etaGhostMax(1.0 + rJet);
 static const Double_t etaJetMax(1.0 - rJet);
 static const Double_t etaBkgdMax(1.0);
+
+// systematic parameters
+static const Bool_t  adjustEff(true);
+static const Float_t effAdjust(0.05);
+
 
 
 void MakeMuDstJetTree(const Double_t pTparton=pTdefault, const TString sInput=sInDefault, const TString sOutput=sOutDefault, const Bool_t isInBatchMode=false) {
@@ -51,12 +56,9 @@ void MakeMuDstJetTree(const Double_t pTparton=pTdefault, const TString sInput=sI
   const Double_t eEtaMin(0.5);
   const Double_t ePhiMin(0.5);
   const Double_t pProjMax(3.);
-  //const Double_t etaTrgMax(0.9);
-  const Double_t etaTrgMax(2.);
-  //const Double_t eTtrgMin(9.);
-  //const Double_t eTtrgMax(20.);
-  const Double_t eTtrgMin(0.);
-  const Double_t eTtrgMax(100.);
+  const Double_t etaTrgMax(0.9);
+  const Double_t eTtrgMin(9.);
+  const Double_t eTtrgMax(20.);
   const Double_t tspPi0Min(0.);
   const Double_t tspPi0Max(0.08);
   const Double_t tspGamMin(0.2);
@@ -84,6 +86,7 @@ void MakeMuDstJetTree(const Double_t pTparton=pTdefault, const TString sInput=sI
   jetMaker -> SetTrackParameters(nFitMin, rFitMin, dcaMax, etaTrkMax, pTtrkMin, pTtrkMax);
   jetMaker -> SetTowerParameters(etaTwrMax, eTwrMin, eTwrMax, eCorrMin, eCorrMax);
   jetMaker -> SetJetParameters(type, nRepeat, nRemove, rJet, aGhost, pTjetMin, etaGhostMax, etaJetMax, etaBkgdMax);
+  if (adjustEff) jetMaker -> AdjustTrackEfficiency(adjustEff, effAdjust);
   // find jets
   jetMaker -> Init();
   jetMaker -> Make(trigger);
