@@ -374,6 +374,9 @@ void StMuDstJetTreeMaker::PrintInfo(const UInt_t code, const UInt_t nEvts, const
     case 16:
       cout << "  Files closed, jet making finished!\n" << endl;
       break;
+    case 17:
+      cout << "    Adjusting track efficiency by " << _effAdjust << endl;
+      break;
   }
 
 }  // end 'PrintInfo(UInt_t)'

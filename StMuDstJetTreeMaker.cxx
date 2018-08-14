@@ -109,6 +109,16 @@ void StMuDstJetTreeMaker::SetJetParameters(const UInt_t type, const UInt_t nRepe
 
 
 
+void StMuDstJetTreeMaker::AdjustTrackEfficiency(const Bool_t effAdjust, const Float_t adjustment) {
+
+  _adjustTrackEff = effAdjust;
+  _effAdjust      = adjustment;
+  PrintInfo(17);
+
+}  // 'AdjustTrackEfficiency(Bool_t, Float_t)'
+
+
+
 void StMuDstJetTreeMaker::Init() {
 
   _fOutput    = new TFile(_sOutput.Data(), "recreate");
@@ -249,6 +259,13 @@ void StMuDstJetTreeMaker::UsePionTriggeredEvents() {
       // track cuts
       const Bool_t isGoodTrk = IsGoodTrack(nFit, rFit, dca, hTrk, pTtrk);
       if (!isGoodTrk) continue;
+
+      // adjust tracking efficiency (if need be)
+      if (_adjustTrackEff) {
+        const Float_t rando = _random -> Uniform(0., 1.);
+        const Bool_t  pass  = (rando > _effAdjust);
+        if (!pass) continue;
+      } 
 
 
       if (isPi0) {
